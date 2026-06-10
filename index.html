@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tablero de Asistencia · Equipo Técnico</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  :root{
+    --azul:#0f2a4a;
+    --azul-claro:#1d4e7e;
+    --fondo:#f3f5f8;
+    --panel:#ffffff;
+    --verde:#16a34a;
+    --amarillo:#eab308;
+    --rojo:#dc2626;
+    --texto:#1c2733;
+    --texto-suave:#5b6b7b;
+    --borde:#dde4ec;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+    background:var(--fondo);color:var(--texto);
+    display:flex;flex-direction:column;height:100vh;overflow:hidden;
+  }
+
+  /* ===== Encabezado ===== */
+  header{
+    background:var(--azul);color:#fff;
+    padding:10px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  }
+  header h1{font-size:17px;font-weight:600;letter-spacing:.3px}
+  header .sub{font-size:12px;opacity:.75}
+  .header-derecha{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .btn{
+    background:#fff;color:var(--azul);border:none;border-radius:6px;
+    padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;
+    display:inline-flex;align-items:center;gap:6px;
+  }
+  .btn:hover{background:#e8eef5}
+  .btn:disabled{opacity:.6;cursor:wait}
+  .btn .icono{display:inline-block;transition:transform .4s}
+  .btn.cargando .icono{animation:girar 1s linear infinite}
+  @keyframes girar{to{transform:rotate(360deg)}}
+  select.ctrl{
+    background:var(--azul-claro);color:#fff;border:1px solid rgba(255,255,255,.3);
+    border-radius:6px;padding:7px 8px;font-size:12px;cursor:pointer;
+  }
+  .ultima{font-size:11px;opacity:.8}
+
+  /* ===== Tarjetas resumen ===== */
+  .resumen{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+    gap:10px;padding:12px 18px;background:var(--fondo);
+  }
+  .tarjeta{
+    background:var(--panel);border:1px solid var(--borde);border-radius:10px;
+    padding:10px 14px;
+  }
+  .tarjeta .valor{font-size:24px;font-weight:700;line-height:1.1}
+  .tarjeta .etiqueta{font-size:11px;color:var(--texto-suave);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+  .tarjeta.verde .valor{color:var(--verde)}
+  .tarjeta.amarillo .valor{color:var(--amarillo)}
+  .tarjeta.rojo .valor{color:var(--rojo)}
+  .tarjeta.azul .valor{color:var(--azul-claro)}
+
+  /* ===== Filtro de cargos ===== */
+  .barra-cargos{
+    display:flex;gap:6px;flex-wrap:wrap;align-items:center;
+    padding:0 18px 12px;background:var(--fondo);
+  }
+  .barra-cargos .titulo-cargos{font-size:11px;color:var(--texto-suave);text-transform:uppercase;letter-spacing:.5px;margin-right:4px}
+  .chip-cargo{
+    border:1px solid var(--borde);background:#fff;border-radius:16px;
+    padding:6px 12px;font-size:12px;cursor:pointer;color:var(--texto-suave);
+    transition:all .15s;
+  }
+  .chip-cargo:hover{border-color:var(--azul-claro);color:var(--azul-claro)}
+  .chip-cargo.activo{background:var(--azul);color:#fff;border-color:var(--azul)}
+
+  /* ===== Cuerpo: barra lateral + mapa ===== */
+  .cuerpo{flex:1;display:flex;min-height:0}
+  aside{
+    width:340px;min-width:260px;background:var(--panel);
+    border-right:1px solid var(--borde);display:flex;flex-direction:column;
+  }
+  .controles{padding:10px;border-bottom:1px solid var(--borde);display:flex;flex-direction:column;gap:8px}
+  .controles input{
+    width:100%;padding:8px 10px;border:1px solid var(--borde);border-radius:6px;font-size:13px;
+  }
+  .filtros{display:flex;gap:6px}
+  .chip{
+    flex:1;border:1px solid var(--borde);background:#fff;border-radius:6px;
+    padding:6px 4px;font-size:11px;cursor:pointer;text-align:center;color:var(--texto-suave);
+  }
+  .chip.activo{background:var(--azul);color:#fff;border-color:var(--azul)}
+  .lista{flex:1;overflow-y:auto}
+  .item{
+    padding:9px 12px;border-bottom:1px solid var(--borde);cursor:pointer;
+    display:flex;gap:9px;align-items:flex-start;
+  }
+  .item:hover{background:#f0f4f9}
+  .punto{width:10px;height:10px;border-radius:50%;margin-top:4px;flex-shrink:0}
+  .punto.verde{background:var(--verde)}
+  .punto.amarillo{background:var(--amarillo)}
+  .punto.rojo{background:var(--rojo)}
+  .item .nombre{font-size:12.5px;font-weight:600;line-height:1.25}
+  .item .codigo{font-size:10px;color:var(--texto-suave)}
+  .item .cifras{margin-left:auto;text-align:right;flex-shrink:0}
+  .item .cifras .asis{font-size:13px;font-weight:700}
+  .item .cifras .tot{font-size:10px;color:var(--texto-suave)}
+  .vacio{padding:24px;text-align:center;color:var(--texto-suave);font-size:13px}
+
+  #mapa{flex:1;min-width:0}
+
+  /* ===== Popup ===== */
+  .popup-nombre{font-weight:700;font-size:13px;margin-bottom:2px}
+  .popup-codigo{font-size:11px;color:var(--texto-suave);margin-bottom:8px}
+  .popup-cargo{display:flex;align-items:center;gap:7px;font-size:12px;padding:2.5px 0}
+  .popup-cargo .pt{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+  .popup-cargo .pt.si{background:var(--verde)}
+  .popup-cargo .pt.no{background:var(--rojo)}
+  .popup-cargo .sinrep{color:var(--texto-suave);font-style:italic;font-size:10.5px}
+
+  /* ===== Aviso de error ===== */
+  .aviso{
+    position:absolute;top:12px;left:50%;transform:translateX(-50%);
+    background:var(--rojo);color:#fff;padding:8px 16px;border-radius:8px;
+    font-size:13px;z-index:2000;display:none;max-width:90%;
+  }
+
+  /* ===== Leyenda ===== */
+  .leyenda{
+    background:#fff;padding:8px 12px;border-radius:8px;
+    box-shadow:0 1px 5px rgba(0,0,0,.25);font-size:12px;line-height:1.8;
+  }
+  .leyenda .pt{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
+
+  @media (max-width:760px){
+    .cuerpo{flex-direction:column}
+    aside{width:100%;max-height:40%;border-right:none;border-top:1px solid var(--borde);order:2}
+    #mapa{order:1;min-height:300px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Asistencia del Equipo Técnico</h1>
+    <div class="sub">7 cargos por escuela · datos en vivo</div>
+  </div>
+  <div class="header-derecha">
+    <span class="ultima" id="ultima">Sin datos cargados</span>
+    <select class="ctrl" id="selFecha" title="Fecha del reporte"></select>
+    <select class="ctrl" id="autoRefresco" title="Actualización automática">
+      <option value="0">Auto: apagado</option>
+      <option value="60" selected>Auto: cada 1 min</option>
+      <option value="300">Auto: cada 5 min</option>
+      <option value="600">Auto: cada 10 min</option>
+    </select>
+    <button class="btn" id="btnActualizar">
+      <span class="icono">⟳</span> Actualizar datos
+    </button>
+  </div>
+</header>
+
+<div class="resumen">
+  <div class="tarjeta azul"><div class="valor" id="numEscuelas">–</div><div class="etiqueta">Escuelas</div></div>
+  <div class="tarjeta verde"><div class="valor" id="numAsistentes">–</div><div class="etiqueta">Miembros asistentes</div></div>
+  <div class="tarjeta amarillo"><div class="valor" id="numInasistentes">–</div><div class="etiqueta">Miembros inasistentes</div></div>
+  <div class="tarjeta rojo"><div class="valor" id="numSinReporte">–</div><div class="etiqueta">Miembros sin reporte</div></div>
+  <div class="tarjeta verde"><div class="valor" id="escVerdes">–</div><div class="etiqueta">Escuelas completas</div></div>
+  <div class="tarjeta amarillo"><div class="valor" id="escAmarillas">–</div><div class="etiqueta">Con inasistencias</div></div>
+  <div class="tarjeta rojo"><div class="valor" id="escRojas">–</div><div class="etiqueta">Sin marcar</div></div>
+</div>
+
+<div class="barra-cargos" id="barraCargos">
+  <span class="titulo-cargos">Filtrar por cargo:</span>
+  <!-- chips generados por JS -->
+</div>
+
+<div class="cuerpo">
+  <aside>
+    <div class="controles">
+      <input type="text" id="buscar" placeholder="Buscar escuela o código…">
+      <div class="filtros">
+        <div class="chip activo" data-f="todas">Todas</div>
+        <div class="chip" data-f="verde">Completas</div>
+        <div class="chip" data-f="amarillo">Con inasist.</div>
+        <div class="chip" data-f="rojo">Sin marcar</div>
+      </div>
+    </div>
+    <div class="lista" id="lista"><div class="vacio">Cargando datos…</div></div>
+  </aside>
+  <div id="mapa"></div>
+</div>
+
+<div class="aviso" id="aviso"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ================= CONFIGURACIÓN ================= */
+const SHEET_ID = "1yxXWe5mW_x2lqp3NUSO9Ef4iPgfnUzHkqqAAq6gzVlg";
+const SHEET_NOMBRE = "Asistencia";
+const BASE_GVIZ = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(SHEET_NOMBRE)}`;
+const URL_JSON = BASE_GVIZ + "&tqx=out:json";
+const URL_CSV  = BASE_GVIZ + "&tqx=out:csv";
+
+const CARGOS = [
+  "Coordinador",
+  "Administrador",
+  "Cuidador(es)",
+  "Monitor Mined",
+  "Técnico de red",
+  "Admin. de equipos",
+  "Mesa de monitoreo"
+];
+
+const ESCUELAS = [{"codigo": "10057", "nombre": "CENTRO ESCOLAR CIUDAD CREDISA", "lat": 13.693645, "lng": -89.161384}, {"codigo": "10084", "nombre": "CENTRO ESCOLAR URBANIZACION MONTELIMAR", "lat": 13.598005, "lng": -89.123145}, {"codigo": "10096", "nombre": "CENTRO ESCOLAR SAN ANTONIO", "lat": 13.740462, "lng": -89.138871}, {"codigo": "10123", "nombre": "CENTRO ESCOLAR URB SANTA TERESA DE LAS FLORES", "lat": 13.812739, "lng": -89.166699}, {"codigo": "10160", "nombre": "COMPLEJO EDUCATIVO RESIDENCIAL ALTAVISTA", "lat": 13.735009, "lng": -89.080578}, {"codigo": "10209", "nombre": "CENTRO ESCOLAR JOSÉ RUBEN RIVERA RIVERA", "lat": 13.878994, "lng": -89.473111}, {"codigo": "11015", "nombre": "CENTRO ESCOLAR PROFESOR OSCAR ARMANDO GUERRA CASTRO", "lat": 13.78384, "lng": -89.399576}, {"codigo": "11130", "nombre": "CENTRO ESCOLAR ORGANIZACION DE ESTADOS IBEROAMERIC", "lat": 13.684445, "lng": -89.301042}, {"codigo": "11307", "nombre": "INSTITUTO NACIONAL DE AGUILARES", "lat": 13.955686, "lng": -89.193213}, {"codigo": "11308", "nombre": "CENTRO ESCOLAR MODESTO BARRIOS", "lat": 13.956697, "lng": -89.185301}, {"codigo": "11314", "nombre": "CENTRO ESCOLAR CELSA PALACIOS", "lat": 13.945214, "lng": -89.187689}, {"codigo": "11317", "nombre": "CENTRO ESCOLAR SAN SEBASTIAN", "lat": 13.798468, "lng": -89.177416}, {"codigo": "11319", "nombre": "COMPLEJO EDUCATIVO PROFESOR IVAN ALEXANDER BURGOS", "lat": 13.800573, "lng": -89.163139}, {"codigo": "11321", "nombre": "CENTRO ESCOLAR COLONIA LA ERMITA", "lat": 13.81117, "lng": -89.178168}, {"codigo": "11323", "nombre": "CENTRO ESCOLAR PROFESOR ROMEO HUMBERTO GONZALEZ", "lat": 13.788256, "lng": -89.178512}, {"codigo": "11330", "nombre": "INSTITUTO NACIONAL DE APOPA", "lat": 13.804144, "lng": -89.181574}, {"codigo": "11331", "nombre": "CENTRO ESCOLAR CANTON EL ANGEL", "lat": 13.795033, "lng": -89.187344}, {"codigo": "11336", "nombre": "CENTRO ESCOLAR COLONIA LAS CAÑAS", "lat": 13.813181, "lng": -89.170438}, {"codigo": "11337", "nombre": "COMPLEJO EDUCATIVO SARA PALMA DE JULE", "lat": 13.817594, "lng": -89.181067}, {"codigo": "11338", "nombre": "CENTRO ESCOLAR REPUBLICA DE CHINA", "lat": 13.811828, "lng": -89.181355}, {"codigo": "11340", "nombre": "COMPLEJO EDUCATIVO INGENIERO JOSE NAPOLEON DUARTE", "lat": 13.814597, "lng": -89.186678}, {"codigo": "11342", "nombre": "CENTRO ESCOLAR DE POPOTLAN", "lat": 13.80046, "lng": -89.170009}, {"codigo": "11343", "nombre": "CENTRO ESCOLAR ASENTAMIENTO DE LA COLONIA POPOTLAN", "lat": 13.803091, "lng": -89.167548}, {"codigo": "11344", "nombre": "CENTRO ESCOLAR VICENTE ACOSTA", "lat": 13.80363, "lng": -89.18179}, {"codigo": "11349", "nombre": "COMPLEJO EDUCATIVO INGENIERO GUILLERMO BORJA NATHA", "lat": 13.80597, "lng": -89.194629}, {"codigo": "11353", "nombre": "CENTRO ESCOLAR DOCTOR DOROTEO VASCONCELOS", "lat": 13.735026, "lng": -89.200835}, {"codigo": "11354", "nombre": "CENTRO ESCOLAR DOCTOR ARTURO ROMERO", "lat": 13.734303, "lng": -89.204204}, {"codigo": "11365", "nombre": "COMPLEJO EDUCATIVO LA PAZ", "lat": 13.732057, "lng": -89.181286}, {"codigo": "11367", "nombre": "COMPLEJO EDUCATIVO ANGELA DE SOLER", "lat": 13.769183, "lng": -89.18413}, {"codigo": "11385", "nombre": "CENTRO ESCOLAR CANTON SAN JERONIMO", "lat": 13.922065, "lng": -89.184635}, {"codigo": "11386", "nombre": "CENTRO ESCOLAR SALVADOR SALAZAR ARRUE", "lat": 13.873527, "lng": -89.168884}, {"codigo": "11394", "nombre": "CENTRO ESCOLAR JARDINES DE SELT-SUTT", "lat": 13.712139, "lng": -89.086065}, {"codigo": "11395", "nombre": "INSTITUTO NACIONAL DE SAN BARTOLO", "lat": 13.705475, "lng": -89.10436}, {"codigo": "11400", "nombre": "COMPLEJO EDUCATIVO CANTON SAN BARTOLO", "lat": 13.707955, "lng": -89.099632}, {"codigo": "11406", "nombre": "COMPLEJO EDUCATIVOCOLONIA VERACRUZ, CANTON SAN BAR", "lat": 13.715571, "lng": -89.092844}, {"codigo": "11409", "nombre": "CENTRO ESCOLAR REPUBLICA DE VENEZUELA", "lat": 13.689434, "lng": -89.132155}, {"codigo": "11411", "nombre": "CENTRO ESCOLAR JOHN F. KENNEDY", "lat": 13.689543, "lng": -89.128838}, {"codigo": "11414", "nombre": "CENTRO ESCOLAR REPUBLICA DE FRANCIA", "lat": 13.734279, "lng": -89.192068}, {"codigo": "11420", "nombre": "INSTITUTO NACIONAL MAESTRO ALBERTO MASFERRER", "lat": 13.727501, "lng": -89.20407}, {"codigo": "11422", "nombre": "COMPLEJO EDUCATIVO REPUBLICA ORIENTAL DEL URUGUAY", "lat": 13.72744, "lng": -89.20462}, {"codigo": "11426", "nombre": "CENTRO ESCOLAR CANTON SAN ROQUE", "lat": 13.744354, "lng": -89.218853}, {"codigo": "11427", "nombre": "COMPLEJO EDUCATIVO REINO DE SUECIA", "lat": 13.738877, "lng": -89.208701}, {"codigo": "11431", "nombre": "COMPLEJO EDUCATIVO PROFESORA HERMINIA MARTINEZ ALV", "lat": 13.734364, "lng": -89.224312}, {"codigo": "11433", "nombre": "COMPLEJO EDUCATIVO PROFESORA MARIA AMANDA ARTIGA D", "lat": 13.781476, "lng": -89.177977}, {"codigo": "11436", "nombre": "COMPLEJO EDUCATIVO AMALIA VDA. DE MENENDEZ", "lat": 13.724829, "lng": -89.188735}, {"codigo": "11437", "nombre": "CENTRO ESCOLAR 22 DE JUNIO", "lat": 13.72332, "lng": -89.188154}, {"codigo": "11438", "nombre": "COMPLEJO EDUCATIVO JAPON", "lat": 13.727164, "lng": -89.190171}, {"codigo": "11439", "nombre": "CENTRO ESCOLAR COLONIA SAN SIMON", "lat": 13.737535, "lng": -89.185947}, {"codigo": "11440", "nombre": "CENTRO ESCOLAR CANTÓN MAPILAPA", "lat": 13.818488, "lng": -89.257493}, {"codigo": "11443", "nombre": "CENTRO ESCOLAR CANTON ALDEA DE LAS MERCEDES", "lat": 13.803508, "lng": -89.225865}, {"codigo": "11451", "nombre": "CENTRO ESCOLAR JOSE MATIAS DELGADO", "lat": 13.811194, "lng": -89.229625}, {"codigo": "11453", "nombre": "COMPLEJO EDUCATIVO PROFESOR ALBERTO MONTIEL V.", "lat": 13.831917, "lng": -89.225804}, {"codigo": "11457", "nombre": "CENTRO ESCOLAR CANTON SANTA LUCIA LOS PALONES", "lat": 13.634386, "lng": -89.168039}, {"codigo": "11471", "nombre": "COMPLEJO EDUCATIVO MANUEL JOSE ARCE", "lat": 13.576754, "lng": -89.204239}, {"codigo": "11474", "nombre": "CENTRO ESCOLAR CANTON LAS BARROSAS", "lat": 13.543607, "lng": -89.195798}, {"codigo": "11482", "nombre": "COMPLEJO EDUCATIVO COLONIA EL MILAGRO", "lat": 13.663358, "lng": -89.182185}, {"codigo": "11483", "nombre": "CENTRO ESCOLAR DOCTOR EUSEBIO CORDON CEA", "lat": 13.65522, "lng": -89.173343}, {"codigo": "11486", "nombre": "COMPLEJO EDUCATIVO COLONIA SAN ANTONIO", "lat": 13.654829, "lng": -89.186351}, {"codigo": "11488", "nombre": "CENTRO ESCOLAR PROFESOR JUSTO GONZALEZ", "lat": 13.656594, "lng": -89.184962}, {"codigo": "11489", "nombre": "COMPLEJO EDUCATIVO COMUNIDAD 10 DE OCTUBRE", "lat": 13.65207, "lng": -89.165455}, {"codigo": "11493", "nombre": "CENTRO ESCOLAR DOMINGO FAUSTINO SARMIENTO", "lat": 13.667384, "lng": -89.189545}, {"codigo": "11495", "nombre": "COMPLEJO EDUCATIVO GOLDTREE LIEBES", "lat": 13.64164, "lng": -89.189115}, {"codigo": "11499", "nombre": "COMPLEJO EDUCATIVO COLONIA TIERRA VIRGEN", "lat": 13.716209, "lng": -89.084048}, {"codigo": "11500", "nombre": "CENTRO ESCOLAR OLOF PALME", "lat": 13.737816, "lng": -89.054851}, {"codigo": "11501", "nombre": "CENTRO ESCOLAR URBANIZACION SANTA TERESA", "lat": 13.748288, "lng": -89.058845}, {"codigo": "11507", "nombre": "COMPLEJO EDUCATIVO JORGE LARDE", "lat": 13.734779, "lng": -89.059149}, {"codigo": "11508", "nombre": "CENTRO ESCOLAR COLONIA LA PALMA, CANTON LA PALMA", "lat": 13.715319, "lng": -89.071978}, {"codigo": "11512", "nombre": "CENTRO ESCOLAR CANTON LA PALMA", "lat": 13.721173, "lng": -89.068626}, {"codigo": "11516", "nombre": "CENTRO ESCOLAR CANTON LA FLOR", "lat": 13.734985, "lng": -89.043294}, {"codigo": "11518", "nombre": "COMPLEJO EDUCATIVO COLONIA ROSA LINDA", "lat": 13.742279, "lng": -89.057355}, {"codigo": "11522", "nombre": "INSTITUTO NACIONAL ALBERT CAMUS", "lat": 13.714816, "lng": -89.206404}, {"codigo": "11531", "nombre": "CENTRO ESCOLAR COLONIA LLANO VERDE", "lat": 13.698603, "lng": -89.105629}, {"codigo": "11532", "nombre": "CENTRO ESCOLAR GENERAL FRANCISCO MORAZAN", "lat": 13.715622, "lng": -89.205302}, {"codigo": "11574", "nombre": "CENTRO ESCOLAR REPUBLICA DE CANADA", "lat": 13.690446, "lng": -89.235955}, {"codigo": "11580", "nombre": "CENTRO ESCOLAR AMATEPEC", "lat": 13.696247, "lng": -89.169245}, {"codigo": "11592", "nombre": "CENTRO ESCOLAR JOSE MEJIA", "lat": 13.668459, "lng": -89.223889}, {"codigo": "11593", "nombre": "CENTRO ESCOLAR SAN ANTONIO ABAD", "lat": 13.712904, "lng": -89.22405}, {"codigo": "11594", "nombre": "CENTRO ESCOLAR JUANA LOPEZ", "lat": 13.717258, "lng": -89.228851}, {"codigo": "11597", "nombre": "CENTRO ESCOLAR JUAN RAMON JIMENEZ", "lat": 13.685157, "lng": -89.22544}, {"codigo": "11598", "nombre": "CENTRO ESCOLAR REPUBLICA DE ITALIA", "lat": 13.710011, "lng": -89.259782}, {"codigo": "11626", "nombre": "CENTRO ESCOLAR SALVADOR MUGDAN", "lat": 13.709315, "lng": -89.185942}, {"codigo": "11627", "nombre": "CENTRO ESCOLAR SANTIAGO I BARBERENA", "lat": 13.692441, "lng": -89.208952}, {"codigo": "11631", "nombre": "CENTRO ESCOLAR LYNDON B. JOHNSON", "lat": 13.675768, "lng": -89.189583}, {"codigo": "11640", "nombre": "COMPLEJO EDUCATIVO CAPITAN GENERAL GERARDO BARRIOS", "lat": 13.699431, "lng": -89.212294}, {"codigo": "11641", "nombre": "CENTRO ESCOLAR CONSTITUCION 1950", "lat": 13.707817, "lng": -89.180848}, {"codigo": "11645", "nombre": "CENTRO ESCOLAR MIGUEL PINTO", "lat": 13.722699, "lng": -89.211591}, {"codigo": "11648", "nombre": "CENTRO ESCOLAR REPUBLICA DE HONDURAS", "lat": 13.68905, "lng": -89.209165}, {"codigo": "11650", "nombre": "CENTRO ESCOLAR MONSEÑOR BASILIO PLANTIER", "lat": 13.694297, "lng": -89.182082}, {"codigo": "11651", "nombre": "CENTRO ESCOLAR JORGE LARDE", "lat": 13.687328, "lng": -89.189959}, {"codigo": "11661", "nombre": "COMPLEJO EDUCATIVO REPUBLICA DEL BRASIL", "lat": 13.686332, "lng": -89.195397}, {"codigo": "11665", "nombre": "CENTRO ESCOLAR JOSE SIMEON CAÑAS", "lat": 13.681081, "lng": -89.191367}, {"codigo": "11667", "nombre": "COMPLEJO EDUCATIVO JOAQUIN RODEZNO", "lat": 13.701335, "lng": -89.195274}, {"codigo": "11668", "nombre": "CENTRO ESCOLAR JOSE MATIAS DELGADO", "lat": 13.692774, "lng": -89.193215}, {"codigo": "11669", "nombre": "CENTRO ESCOLAR GENERAL RAMON BELLOSO", "lat": 13.683019, "lng": -89.214622}, {"codigo": "11674", "nombre": "COMPLEJO EDUCATIVO DR. HUMBERTO ROMERO ALVERGUE", "lat": 13.685837, "lng": -89.193333}, {"codigo": "11675", "nombre": "CENTRO ESCOLAR LIGA PANAMERICANA", "lat": 13.681828, "lng": -89.183645}, {"codigo": "11677", "nombre": "COMPLEJO EDUCATIVO REPUBLICA DEL ECUADOR", "lat": 13.689142, "lng": -89.201627}, {"codigo": "11679", "nombre": "COMPLEJO EDUCATIVO REPUBLICA DE COSTA RICA", "lat": 13.695629, "lng": -89.188563}, {"codigo": "11680", "nombre": "CENTRO ESCOLAR REPUBLICA DE CHILE", "lat": 13.702168, "lng": -89.182356}, {"codigo": "11695", "nombre": "CENTRO ESCOLAR GENERAL MANUEL BELGRANO", "lat": 13.642588, "lng": -89.133748}, {"codigo": "11708", "nombre": "INSTITUTO NACIONAL SAN LUIS", "lat": 13.714151, "lng": -89.131377}, {"codigo": "11711", "nombre": "CENTRO ESCOLAR BOSQUES DEL RIO", "lat": 13.720576, "lng": -89.120894}, {"codigo": "11712", "nombre": "COMPLEJO EDUCATIVO COLONIA VILLA ALEGRE", "lat": 13.735578, "lng": -89.139782}, {"codigo": "11715", "nombre": "CENTRO ESCOLAR REPARTO LOS SANTOS", "lat": 13.712501, "lng": -89.135524}, {"codigo": "11716", "nombre": "CENTRO ESCOLAR RAFAELA SOTOMAYOR DE ALARCIA", "lat": 13.709548, "lng": -89.144641}, {"codigo": "11723", "nombre": "COMPLEJO EDUCATIVO REPUBLICA DE COREA", "lat": 13.712283, "lng": -89.148464}, {"codigo": "11724", "nombre": "CENTRO ESCOLAR COLONIA GUAYACAN", "lat": 13.713742, "lng": -89.124601}, {"codigo": "11731", "nombre": "CENTRO ESCOLAR COLONIA SAN RAFAEL", "lat": 13.682353, "lng": -89.140356}, {"codigo": "11732", "nombre": "CENTRO ESCOLAR ANTONIO JOSE CAÑAS", "lat": 13.704505, "lng": -89.154855}, {"codigo": "11735", "nombre": "CENTRO ESCOLAR BARRIO EL PROGRESO", "lat": 13.706958, "lng": -89.155239}, {"codigo": "11736", "nombre": "CENTRO ESCOLAR PROFESOR DANIEL CORDON SALGUERO", "lat": 13.704996, "lng": -89.145206}, {"codigo": "11740", "nombre": "CENTRO ESCOLAR PROFESORA MARIA INOCENCIA DE PAREDE", "lat": 13.816149, "lng": -89.1436}, {"codigo": "11745", "nombre": "CENTRO ESCOLAR CANTON VERACRUZ", "lat": 13.736081, "lng": -89.093867}, {"codigo": "11751", "nombre": "COMPLEJO EDUCATIVO FE Y ALEGRIA", "lat": 13.818892, "lng": -89.139358}, {"codigo": "11752", "nombre": "CENTRO ESCOLAR PRESBITERO NICOLAS AGUILAR", "lat": 13.779604, "lng": -89.119678}, {"codigo": "11759", "nombre": "CENTRO ESCOLAR COMUNIDAD PRADERA III", "lat": 13.793202, "lng": -89.162214}, {"codigo": "11764", "nombre": "CENTRO ESCOLAR CANTON CALLE REAL", "lat": 13.758179, "lng": -89.166753}, {"codigo": "11765", "nombre": "CENTRO ESCOLAR CANTON ARENAL", "lat": 13.759382, "lng": -89.178614}, {"codigo": "11767", "nombre": "CENTRO ESCOLAR CANTON SAN JOSE CORTEZ", "lat": 13.754729, "lng": -89.145528}, {"codigo": "11769", "nombre": "CENTRO ESCOLAR CASERIO SAN ANTONIO LAS VEGAS", "lat": 13.770507, "lng": -89.166783}, {"codigo": "11770", "nombre": "CENTRO ESCOLAR EDELMIRA MOLINA", "lat": 13.718074, "lng": -89.169893}, {"codigo": "11771", "nombre": "CENTRO ESCOLAR REINO DE HOLANDA", "lat": 13.712889, "lng": -89.173026}, {"codigo": "11777", "nombre": "CENTRO ESCOLAR CANTON MILINGO", "lat": 13.744367, "lng": -89.168781}, {"codigo": "11922", "nombre": "COMPLEJO EDUCATIVO CANTON EL PEDREGAL", "lat": 13.443175, "lng": -89.016759}, {"codigo": "11932", "nombre": "COMPLEJO EDUCATIVO MERCEDES LA CEIBA", "lat": 13.647466, "lng": -88.912794}, {"codigo": "11933", "nombre": "COMPLEJO EDUCATIVO CASERIO VALLE NUEVO", "lat": 13.477823, "lng": -89.156951}, {"codigo": "11935", "nombre": "INSTITUTO NACIONAL DE OLOCUILTA", "lat": 13.576319, "lng": -89.11629}, {"codigo": "11937", "nombre": "CENTRO ESCOLAR PROFESORA MARIA EVANGELINA ALVAREZ", "lat": 13.613288, "lng": -89.122247}, {"codigo": "11941", "nombre": "CENTRO ESCOLAR PROFESORA ROSA MIRIAN ABREGO DE HER", "lat": 13.50565, "lng": -89.140985}, {"codigo": "11943", "nombre": "COMPLEJO EDUCATIVO ALBERTO MASFERRER", "lat": 13.572435, "lng": -89.116454}, {"codigo": "11944", "nombre": "CENTRO ESCOLAR CANTON SAN SEBASTIAN", "lat": 13.540353, "lng": -89.129142}, {"codigo": "11946", "nombre": "CENTRO ESCOLAR MARIA ESTER ALFARO", "lat": 13.571358, "lng": -89.038357}, {"codigo": "11952", "nombre": "CENTRO ESCOLAR CANTON CONCEPCION LOURDES", "lat": 13.637325, "lng": -88.988368}, {"codigo": "11954", "nombre": "INSTITUTO NACIONAL DE SAN EMIGDIO", "lat": 13.649283, "lng": -88.976656}, {"codigo": "11955", "nombre": "CENTRO ESCOLAR AMALIA ROSALES CAMPOS", "lat": 13.575272, "lng": -89.096944}, {"codigo": "11959", "nombre": "COMPLEJO EDUCATIVO CLAUDIA LARS", "lat": 13.608822, "lng": -89.095446}, {"codigo": "11962", "nombre": "CENTRO ESCOLAR CANTON EL GOLFO", "lat": 13.439704, "lng": -88.91586}, {"codigo": "11964", "nombre": "CENTRO ESCOLAR CANTON LA LAGUNETA", "lat": 13.593117, "lng": -88.874572}, {"codigo": "11975", "nombre": "CENTRO ESCOLAR PROFESORA JUANA SARA LOPEZ DE MIRAN", "lat": 13.504561, "lng": -89.088374}, {"codigo": "11988", "nombre": "INSTITUTO NACIONAL DE SAN LUIS TALPA", "lat": 13.476213, "lng": -89.087755}, {"codigo": "11991", "nombre": "CENTRO ESCOLAR CASERIO EL SALAMAR", "lat": 13.470884, "lng": -89.056729}, {"codigo": "11992", "nombre": "CENTRO ESCOLAR CANTON NUEVO EDEN", "lat": 13.474328, "lng": -89.077931}, {"codigo": "12000", "nombre": "CENTRO ESCOLAR CANTON SAN BARTOLO", "lat": 13.628033, "lng": -88.991292}, {"codigo": "12001", "nombre": "CENTRO ESCOLAR LA PAZ", "lat": 13.618606, "lng": -89.022754}, {"codigo": "12012", "nombre": "COMPLEJO EDUCATIVO CANTON LAS ISLETAS", "lat": 13.407543, "lng": -89.010495}, {"codigo": "12015", "nombre": "CENTRO ESCOLAR MARIA TERESA DUKE", "lat": 13.489343, "lng": -89.047074}, {"codigo": "12017", "nombre": "CENTRO ESCOLAR NEMESIA LUNA", "lat": 13.547575, "lng": -89.036174}, {"codigo": "12032", "nombre": "CENTRO ESCOLAR PROFESOR JOSÉ RICARDO CATIVO", "lat": 13.513503, "lng": -88.914753}, {"codigo": "12049", "nombre": "INSTITUTO NACIONAL JOSE INGENIEROS", "lat": 13.50768, "lng": -88.938282}, {"codigo": "12051", "nombre": "CENTRO ESCOLAR CENTRO AMERICA", "lat": 13.53015, "lng": -88.970256}, {"codigo": "12053", "nombre": "CENTRO ESCOLAR ANASTACIO AQUINO", "lat": 13.534682, "lng": -88.922209}, {"codigo": "12059", "nombre": "CENTRO ESCOLAR CASERIO LA FLECHA", "lat": 13.492093, "lng": -88.99915}, {"codigo": "12061", "nombre": "CENTRO ESCOLAR 14 DE ABRIL", "lat": 13.513907, "lng": -88.969181}, {"codigo": "12124", "nombre": "CENTRO ESCOLAR CATARINO DE JESUS ORTIZ", "lat": 13.510879, "lng": -88.87052}, {"codigo": "13663", "nombre": "COMPLEJO EDUCATIVO REPUBLICA DOMINICANA", "lat": 13.716795, "lng": -89.190562}, {"codigo": "13668", "nombre": "CENTRO ESCOLAR AGUSTIN LINARES", "lat": 13.715527, "lng": -89.130282}, {"codigo": "13671", "nombre": "CENTRO ESCOLAR LA PONDEROSA", "lat": 13.817345, "lng": -89.180361}, {"codigo": "13713", "nombre": "CENTRO ESCOLAR URBANIZACION LAS MARGARITAS", "lat": 13.723311, "lng": -89.143354}, {"codigo": "14806", "nombre": "CENTRO ESCOLAR ALTAVISTA", "lat": 13.720307, "lng": -89.098011}, {"codigo": "14808", "nombre": "INSTITUTO NACIONAL DE LA COLONIA SANTA LUCIA", "lat": 13.688507, "lng": -89.130658}, {"codigo": "14812", "nombre": "COMPLEJO EDUCATIVO CIUDAD FUTURA", "lat": 13.787207, "lng": -89.186424}, {"codigo": "60247", "nombre": "CENTRO ESCOLAR URBANIZACION CUMBRES DE SAN BARTOLO", "lat": 13.730671, "lng": -89.111479}, {"codigo": "60250", "nombre": "CENTRO ESCOLAR CASERIO RESIDENCIAL ALTAVISTA CANTON VERACRUZ", "lat": 13.734653, "lng": -89.088485}, {"codigo": "60321", "nombre": "CENTRO ESCOLAR CASERIO EL GUAYABO CANTON SAN ISIDRO LOS PLANES", "lat": 13.728793, "lng": -89.269276}, {"codigo": "68097", "nombre": "CENTRO ESCOLAR CANTON SEGURA", "lat": 13.940169, "lng": -89.23211}, {"codigo": "70001", "nombre": "COMPLEJO EDUCATIVO CANTON LOS MANGOS", "lat": 13.963686, "lng": -89.196535}, {"codigo": "70041", "nombre": "CENTRO ESCOLAR CANTON AMAYON", "lat": 13.517006, "lng": -89.170156}, {"codigo": "70042", "nombre": "COMPLEJO EDUCATIVO CASERIO PLAN DEL MANGO, CANTON", "lat": 13.506397, "lng": -89.196005}, {"codigo": "70046", "nombre": "CENTRO ESCOLAR CANTON AZACUALPA", "lat": 13.540411, "lng": -89.175897}, {"codigo": "70063", "nombre": "CENTRO ESCOLAR CASERIO COMUNIDAD SAN ANDRES, CANTO", "lat": 13.721621, "lng": -89.074797}, {"codigo": "70064", "nombre": "COMPLEJO EDUCATIVO CASERIO COMUNIDAD VALLE LAS DEL", "lat": 13.724162, "lng": -89.085577}, {"codigo": "70070", "nombre": "COMPLEJO EDUCATIVO CANTON JOYA GRANDE", "lat": 13.666521, "lng": -89.091466}, {"codigo": "70080", "nombre": "CENTRO ESCOLAR CANTON EL GUAJE", "lat": 13.637455, "lng": -89.147087}, {"codigo": "70093", "nombre": "CENTRO ESCOLAR CASERIO URBANIZACION LIRIOS DEL NOR", "lat": 13.768344, "lng": -89.17568}, {"codigo": "86237", "nombre": "CENTRO ESCOLAR CANTON LA UNION", "lat": 13.741244, "lng": -89.102124}, {"codigo": "86332", "nombre": "COMPLEJO EDUCATIVO URBANIZACION MONTECARMELO, CANT", "lat": 13.770677, "lng": -89.181603}, {"codigo": "88036", "nombre": "COMPLEJO EDUCATIVO CATOLICO SANTA CATALINA", "lat": 13.801408, "lng": -89.1784334}, {"codigo": "90053", "nombre": "ESCUELA MUNICIPAL DE CIUDAD FUTURA FASE I", "lat": 13.784216, "lng": -89.184816}];
+
+/* ================= ESTADO ================= */
+let registros = [];        // {fecha, hora, codigo, cargo, asistio}
+let fechasDisponibles = [];
+let fechaSel = null;
+let cargoSel = "todos";
+let filtroEstado = "todas";
+let textoBusqueda = "";
+let temporizador = null;
+let marcadores = {};       // codigo -> marker
+let estadoPorEscuela = {}; // codigo -> {color, porCargo:{cargo:{asistio}|null}, asistentes, inasistentes}
+
+/* ================= MAPA ================= */
+const mapa = L.map("mapa").setView([13.70, -89.15], 10);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  attribution: "&copy; OpenStreetMap"
+}).addTo(mapa);
+const capaMarcadores = L.layerGroup().addTo(mapa);
+let yaAjustado = false;
+
+const leyenda = L.control({position:"bottomright"});
+leyenda.onAdd = function(){
+  const div = L.DomUtil.create("div","leyenda");
+  div.innerHTML =
+    '<span class="pt" style="background:#16a34a"></span> Equipo completo asistente<br>' +
+    '<span class="pt" style="background:#eab308"></span> Con inasistencias<br>' +
+    '<span class="pt" style="background:#dc2626"></span> Sin marcar asistencia';
+  return div;
+};
+leyenda.addTo(mapa);
+
+/* ================= UTILIDADES ================= */
+function normalizar(t){
+  return String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
+}
+const CARGOS_NORM = {};
+CARGOS.forEach(c => CARGOS_NORM[normalizar(c)] = c);
+
+function cargoCanonico(t){
+  return CARGOS_NORM[normalizar(t)] || null;
+}
+function esSi(t){
+  const n = normalizar(t);
+  return n === "si" || n === "s" || n === "1" || n === "true" || n === "asistio" || n === "x";
+}
+function codigoDeEscuela(t){
+  const m = String(t||"").match(/^\s*(\d{4,6})\s*-/);
+  return m ? m[1] : null;
+}
+// gviz devuelve fechas como "Date(2026,5,10)" (mes base 0)
+function normalizarFecha(v, f){
+  if(f) return f; // valor formateado, ej. "2026-06-10"
+  const m = String(v||"").match(/Date\((\d+),(\d+),(\d+)/);
+  if(m){
+    const mes = String(parseInt(m[2],10)+1).padStart(2,"0");
+    const dia = String(m[3]).padStart(2,"0");
+    return `${m[1]}-${mes}-${dia}`;
+  }
+  return String(v||"").trim();
+}
+
+/* ================= CARGA DE DATOS ================= */
+async function cargarDatos(){
+  const btn = document.getElementById("btnActualizar");
+  btn.disabled = true; btn.classList.add("cargando");
+  ocultarAviso();
+
+  let filas = null;
+  let ultimoError = null;
+
+  // Método 1: fetch del JSON gviz
+  try{ filas = filasDesdeGviz(extraerJsonGviz(await fetchTexto(URL_JSON))); }
+  catch(e){ ultimoError = e; console.warn("Método JSON falló:", e.message); }
+
+  // Método 2: fetch del CSV gviz
+  if(!filas){
+    try{ filas = filasDesdeCSV(await fetchTexto(URL_CSV)); }
+    catch(e){ ultimoError = e; console.warn("Método CSV falló:", e.message); }
+  }
+
+  // Método 3: JSONP — carga el gviz como <script>, no está sujeto a CORS
+  if(!filas){
+    try{ filas = filasDesdeGviz(await cargarViaJsonp()); }
+    catch(e){ ultimoError = e; console.warn("Método JSONP falló:", e.message); }
+  }
+
+  if(filas){
+    registros = filas;
+    actualizarFechas();
+    procesarYPintar();
+    document.getElementById("ultima").textContent =
+      "Última actualización: " + new Date().toLocaleTimeString("es-SV", {hour:"2-digit", minute:"2-digit", second:"2-digit"});
+  }else{
+    console.error(ultimoError);
+    mostrarAviso("No se pudieron cargar los datos por ningún método. " +
+      "Si está viendo este archivo dentro del visor de Claude, descárguelo y ábralo directamente en Chrome o Edge. " +
+      "Detalle: " + (ultimoError ? ultimoError.message : "desconocido"));
+  }
+  btn.disabled = false; btn.classList.remove("cargando");
+}
+
+async function fetchTexto(url){
+  const resp = await fetch(url + "&_=" + Date.now(), {cache:"no-store"});
+  if(!resp.ok) throw new Error("HTTP " + resp.status);
+  return await resp.text();
+}
+
+function extraerJsonGviz(texto){
+  const inicio = texto.indexOf("{");
+  const fin = texto.lastIndexOf("}");
+  if(inicio < 0 || fin < 0) throw new Error("Respuesta gviz no reconocida");
+  const json = JSON.parse(texto.substring(inicio, fin + 1));
+  if(json.status === "error") throw new Error(json.errors?.[0]?.detailed_message || "Error de gviz");
+  return json;
+}
+
+function cargarViaJsonp(){
+  return new Promise((resolver, rechazar)=>{
+    window.google = window.google || {};
+    window.google.visualization = window.google.visualization || {};
+    window.google.visualization.Query = window.google.visualization.Query || {};
+    window.google.visualization.Query.setResponse = function(json){
+      limpiar();
+      if(json.status === "error"){
+        rechazar(new Error(json.errors?.[0]?.detailed_message || "Error de gviz"));
+      }else{
+        resolver(json);
+      }
+    };
+    const script = document.createElement("script");
+    script.src = URL_JSON + "&_=" + Date.now();
+    script.onerror = ()=>{ limpiar(); rechazar(new Error("No se pudo cargar el script de Google Sheets (¿sin conexión o bloqueado?)")); };
+    const tiempo = setTimeout(()=>{ limpiar(); rechazar(new Error("Tiempo de espera agotado (JSONP)")); }, 15000);
+    function limpiar(){
+      clearTimeout(tiempo);
+      if(script.parentNode) script.parentNode.removeChild(script);
+    }
+    document.head.appendChild(script);
+  });
+}
+
+/* Columnas esperadas: Fecha, Hora, Escuela, Cargo, Asistencia, Registrado por */
+function filasDesdeGviz(json){
+  const cols = (json.table.cols || []).map(c => normalizar(c.label));
+  const idx = {
+    fecha: indiceCol(cols, ["fecha"], 0),
+    hora:  indiceCol(cols, ["hora"], 1),
+    escuela: indiceCol(cols, ["escuela","centro escolar"], 2),
+    cargo: indiceCol(cols, ["cargo"], 3),
+    asistencia: indiceCol(cols, ["asistencia"], 4)
+  };
+  const datos = [];
+  for(const f of (json.table.rows || [])){
+    const c = f.c || [];
+    const celda = i => c[i] || {};
+    const codigo = codigoDeEscuela(celda(idx.escuela).v);
+    const cargo = cargoCanonico(celda(idx.cargo).v);
+    if(!codigo || !cargo) continue;
+    datos.push({
+      fecha: normalizarFecha(celda(idx.fecha).v, celda(idx.fecha).f),
+      hora: celda(idx.hora).f || String(celda(idx.hora).v || ""),
+      codigo, cargo,
+      asistio: esSi(celda(idx.asistencia).v)
+    });
+  }
+  return datos;
+}
+
+function filasDesdeCSV(texto){
+  const lineas = texto.split(/\r?\n/).filter(l=>l.trim()!=="");
+  if(lineas.length < 2) return [];
+  const filas = lineas.map(divideCSV);
+  const cab = filas[0].map(c=>normalizar(c));
+  const idx = {
+    fecha: indiceCol(cab, ["fecha"], 0),
+    hora:  indiceCol(cab, ["hora"], 1),
+    escuela: indiceCol(cab, ["escuela","centro escolar"], 2),
+    cargo: indiceCol(cab, ["cargo"], 3),
+    asistencia: indiceCol(cab, ["asistencia"], 4)
+  };
+  const datos = [];
+  for(let i=1;i<filas.length;i++){
+    const f = filas[i];
+    const codigo = codigoDeEscuela(f[idx.escuela]);
+    const cargo = cargoCanonico(f[idx.cargo]);
+    if(!codigo || !cargo) continue;
+    datos.push({
+      fecha: String(f[idx.fecha]||"").trim(),
+      hora: String(f[idx.hora]||"").trim(),
+      codigo, cargo,
+      asistio: esSi(f[idx.asistencia])
+    });
+  }
+  return datos;
+}
+
+function divideCSV(linea){
+  const campos = []; let actual = ""; let enComillas = false;
+  for(let i=0;i<linea.length;i++){
+    const ch = linea[i];
+    if(ch === '"'){
+      if(enComillas && linea[i+1] === '"'){ actual += '"'; i++; }
+      else enComillas = !enComillas;
+    }else if(ch === "," && !enComillas){
+      campos.push(actual); actual = "";
+    }else{
+      actual += ch;
+    }
+  }
+  campos.push(actual);
+  return campos;
+}
+
+function indiceCol(cols, candidatos, porDefecto){
+  for(const cand of candidatos){
+    const i = cols.indexOf(cand);
+    if(i >= 0) return i;
+  }
+  return porDefecto;
+}
+
+/* ================= FECHAS ================= */
+function actualizarFechas(){
+  fechasDisponibles = [...new Set(registros.map(r=>r.fecha).filter(Boolean))].sort().reverse();
+  const sel = document.getElementById("selFecha");
+  const anterior = fechaSel;
+  sel.innerHTML = "";
+  if(fechasDisponibles.length === 0){
+    sel.innerHTML = '<option value="">Sin fechas</option>';
+    fechaSel = null;
+    return;
+  }
+  for(const f of fechasDisponibles){
+    const op = document.createElement("option");
+    op.value = f; op.textContent = "Fecha: " + f;
+    sel.appendChild(op);
+  }
+  // Mantener la fecha elegida si sigue existiendo; si no, usar la más reciente
+  fechaSel = fechasDisponibles.includes(anterior) ? anterior : fechasDisponibles[0];
+  sel.value = fechaSel;
+}
+
+/* ================= LÓGICA DE ESTADO ================= */
+function procesarYPintar(){
+  // último registro por escuela+cargo en la fecha seleccionada (los más recientes ganan)
+  estadoPorEscuela = {};
+  const ultimo = {}; // "codigo|cargo" -> asistio
+  for(const r of registros){
+    if(r.fecha !== fechaSel) continue;
+    ultimo[r.codigo + "|" + r.cargo] = r.asistio; // recorrido en orden: la fila más reciente queda
+  }
+  for(const e of ESCUELAS){
+    const porCargo = {};
+    let reportados = 0, asistentes = 0, inasistentes = 0;
+    for(const c of CARGOS){
+      const v = ultimo[e.codigo + "|" + c];
+      if(v === undefined){
+        porCargo[c] = null;
+      }else{
+        porCargo[c] = v;
+        reportados++;
+        if(v) asistentes++; else inasistentes++;
+      }
+    }
+    let color;
+    if(cargoSel !== "todos"){
+      const v = porCargo[cargoSel];
+      color = (v === null || v === undefined) ? "rojo" : (v ? "verde" : "amarillo");
+    }else{
+      if(reportados === 0) color = "rojo";
+      else if(asistentes === CARGOS.length) color = "verde";
+      else color = "amarillo";
+    }
+    estadoPorEscuela[e.codigo] = {color, porCargo, reportados, asistentes, inasistentes};
+  }
+  pintarResumen();
+  pintarMapa();
+  pintarLista();
+}
+
+/* ================= RENDER ================= */
+function pintarResumen(){
+  let asistentes = 0, inasistentes = 0, sinReporte = 0;
+  let verdes = 0, amarillas = 0, rojas = 0;
+  const cargosConsiderados = cargoSel === "todos" ? CARGOS : [cargoSel];
+  for(const e of ESCUELAS){
+    const est = estadoPorEscuela[e.codigo];
+    if(est.color === "verde") verdes++;
+    else if(est.color === "amarillo") amarillas++;
+    else rojas++;
+    for(const c of cargosConsiderados){
+      const v = est.porCargo[c];
+      if(v === null) sinReporte++;
+      else if(v) asistentes++;
+      else inasistentes++;
+    }
+  }
+  ponerValor("numEscuelas", ESCUELAS.length.toLocaleString("es-SV"));
+  ponerValor("numAsistentes", asistentes.toLocaleString("es-SV"));
+  ponerValor("numInasistentes", inasistentes.toLocaleString("es-SV"));
+  ponerValor("numSinReporte", sinReporte.toLocaleString("es-SV"));
+  ponerValor("escVerdes", verdes.toLocaleString("es-SV"));
+  ponerValor("escAmarillas", amarillas.toLocaleString("es-SV"));
+  ponerValor("escRojas", rojas.toLocaleString("es-SV"));
+}
+
+function ponerValor(id, v){ document.getElementById(id).textContent = v; }
+
+const COLORES = {verde:"#16a34a", amarillo:"#eab308", rojo:"#dc2626"};
+
+function pintarMapa(){
+  capaMarcadores.clearLayers();
+  marcadores = {};
+  const visibles = escuelasFiltradas();
+  for(const e of visibles){
+    const est = estadoPorEscuela[e.codigo];
+    const m = L.circleMarker([e.lat, e.lng], {
+      radius: 7,
+      color: "#ffffff",
+      weight: 1.5,
+      fillColor: COLORES[est.color],
+      fillOpacity: 0.92
+    });
+    m.bindPopup(htmlPopup(e, est), {minWidth: 220});
+    m.addTo(capaMarcadores);
+    marcadores[e.codigo] = m;
+  }
+  if(!yaAjustado && Object.keys(marcadores).length > 0){
+    const grupo = L.featureGroup(Object.values(marcadores));
+    mapa.fitBounds(grupo.getBounds().pad(0.08));
+    yaAjustado = true;
+  }
+}
+
+function htmlPopup(e, est){
+  let html = `<div class="popup-nombre">${e.nombre}</div>` +
+             `<div class="popup-codigo">Código ${e.codigo} · Fecha ${fechaSel || "–"}</div>`;
+  for(const c of CARGOS){
+    const v = est.porCargo[c];
+    const clase = v ? "si" : "no";
+    const extra = (v === null) ? ' <span class="sinrep">— sin reporte</span>' : "";
+    const resaltar = (cargoSel !== "todos" && c === cargoSel) ? "font-weight:700" : "";
+    html += `<div class="popup-cargo" style="${resaltar}"><span class="pt ${clase}"></span>${c}${extra}</div>`;
+  }
+  return html;
+}
+
+function pintarLista(){
+  const cont = document.getElementById("lista");
+  const visibles = escuelasFiltradas();
+  if(visibles.length === 0){
+    cont.innerHTML = '<div class="vacio">No hay escuelas que coincidan con el filtro.</div>';
+    return;
+  }
+  const peso = {rojo:0, amarillo:1, verde:2};
+  const orden = [...visibles].sort((a,b)=>{
+    const ea = estadoPorEscuela[a.codigo], eb = estadoPorEscuela[b.codigo];
+    if(peso[ea.color] !== peso[eb.color]) return peso[ea.color] - peso[eb.color];
+    return a.nombre.localeCompare(b.nombre,"es");
+  });
+  cont.innerHTML = orden.map(e=>{
+    const est = estadoPorEscuela[e.codigo];
+    let cifra, total;
+    if(cargoSel !== "todos"){
+      const v = est.porCargo[cargoSel];
+      cifra = (v === null) ? "–" : (v ? "Asistió" : "Inasistente");
+      total = cargoSel;
+    }else{
+      cifra = est.asistentes;
+      total = `de ${CARGOS.length} asistentes`;
+    }
+    return `<div class="item" data-codigo="${e.codigo}">
+      <div class="punto ${est.color}"></div>
+      <div>
+        <div class="nombre">${e.nombre}</div>
+        <div class="codigo">Código ${e.codigo}</div>
+      </div>
+      <div class="cifras">
+        <div class="asis" style="color:${COLORES[est.color]}">${cifra}</div>
+        <div class="tot">${total}</div>
+      </div>
+    </div>`;
+  }).join("");
+
+  cont.querySelectorAll(".item").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      const m = marcadores[el.dataset.codigo];
+      if(m){
+        mapa.flyTo(m.getLatLng(), 15, {duration:.8});
+        m.openPopup();
+      }
+    });
+  });
+}
+
+function escuelasFiltradas(){
+  const q = normalizar(textoBusqueda);
+  return ESCUELAS.filter(e=>{
+    const est = estadoPorEscuela[e.codigo];
+    if(!est) return false;
+    if(filtroEstado !== "todas" && est.color !== filtroEstado) return false;
+    if(q && !normalizar(e.nombre).includes(q) && !e.codigo.includes(q)) return false;
+    return true;
+  });
+}
+
+/* ================= AVISOS ================= */
+function mostrarAviso(msg){
+  const a = document.getElementById("aviso");
+  a.textContent = msg; a.style.display = "block";
+}
+function ocultarAviso(){ document.getElementById("aviso").style.display = "none"; }
+
+/* ================= EVENTOS ================= */
+document.getElementById("btnActualizar").addEventListener("click", cargarDatos);
+
+document.getElementById("buscar").addEventListener("input", ev=>{
+  textoBusqueda = ev.target.value.trim();
+  pintarMapa(); pintarLista();
+});
+
+document.querySelectorAll(".chip").forEach(ch=>{
+  ch.addEventListener("click", ()=>{
+    document.querySelectorAll(".chip").forEach(c=>c.classList.remove("activo"));
+    ch.classList.add("activo");
+    filtroEstado = ch.dataset.f;
+    pintarMapa(); pintarLista();
+  });
+});
+
+document.getElementById("selFecha").addEventListener("change", ev=>{
+  fechaSel = ev.target.value;
+  procesarYPintar();
+});
+
+// Chips de cargos
+(function crearChipsCargos(){
+  const barra = document.getElementById("barraCargos");
+  const todos = document.createElement("div");
+  todos.className = "chip-cargo activo";
+  todos.dataset.cargo = "todos";
+  todos.textContent = "Todos los cargos";
+  barra.appendChild(todos);
+  for(const c of CARGOS){
+    const ch = document.createElement("div");
+    ch.className = "chip-cargo";
+    ch.dataset.cargo = c;
+    ch.textContent = c;
+    barra.appendChild(ch);
+  }
+  barra.querySelectorAll(".chip-cargo").forEach(ch=>{
+    ch.addEventListener("click", ()=>{
+      barra.querySelectorAll(".chip-cargo").forEach(o=>o.classList.remove("activo"));
+      ch.classList.add("activo");
+      cargoSel = ch.dataset.cargo;
+      procesarYPintar();
+    });
+  });
+})();
+
+document.getElementById("autoRefresco").addEventListener("change", aplicarAutoRefresco);
+
+function aplicarAutoRefresco(){
+  if(temporizador){ clearInterval(temporizador); temporizador = null; }
+  const seg = parseInt(document.getElementById("autoRefresco").value, 10);
+  if(seg > 0){
+    temporizador = setInterval(cargarDatos, seg * 1000);
+  }
+}
+
+/* ================= INICIO ================= */
+cargarDatos();
+aplicarAutoRefresco(); // arranca con el valor por defecto (cada 1 minuto)
+</script>
+</body>
+</html>
