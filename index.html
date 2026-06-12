@@ -150,7 +150,7 @@
 <header>
   <div>
     <h1>Asistencia del Equipo Técnico</h1>
-    <div class="sub">7 cargos por escuela · datos en vivo</div>
+    <div class="sub">7 cargos por escuela · datos en vivo desde Google Sheets</div>
   </div>
   <div class="header-derecha">
     <span class="ultima" id="ultima">Sin datos cargados</span>
@@ -204,10 +204,12 @@
 <script>
 /* ================= CONFIGURACIÓN ================= */
 const SHEET_ID = "1yxXWe5mW_x2lqp3NUSO9Ef4iPgfnUzHkqqAAq6gzVlg";
-const SHEET_NOMBRE = "Asistencia";
-const BASE_GVIZ = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(SHEET_NOMBRE)}`;
-const URL_JSON = BASE_GVIZ + "&tqx=out:json";
-const URL_CSV  = BASE_GVIZ + "&tqx=out:csv";
+const SHEET_ASISTENCIA = "Asistencia";
+const SHEET_ESCUELAS = "Escuelas";
+function urlsGviz(nombreHoja){
+  const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(nombreHoja)}`;
+  return {json: base + "&tqx=out:json", csv: base + "&tqx=out:csv"};
+}
 
 const CARGOS = [
   "Coordinador",
@@ -219,7 +221,9 @@ const CARGOS = [
   "Mesa de monitoreo"
 ];
 
-const ESCUELAS = [{"codigo": "10057", "nombre": "CENTRO ESCOLAR CIUDAD CREDISA", "lat": 13.693645, "lng": -89.161384}, {"codigo": "10084", "nombre": "CENTRO ESCOLAR URBANIZACION MONTELIMAR", "lat": 13.598005, "lng": -89.123145}, {"codigo": "10096", "nombre": "CENTRO ESCOLAR SAN ANTONIO", "lat": 13.740462, "lng": -89.138871}, {"codigo": "10123", "nombre": "CENTRO ESCOLAR URB SANTA TERESA DE LAS FLORES", "lat": 13.812739, "lng": -89.166699}, {"codigo": "10160", "nombre": "COMPLEJO EDUCATIVO RESIDENCIAL ALTAVISTA", "lat": 13.735009, "lng": -89.080578}, {"codigo": "10209", "nombre": "CENTRO ESCOLAR JOSÉ RUBEN RIVERA RIVERA", "lat": 13.878994, "lng": -89.473111}, {"codigo": "11015", "nombre": "CENTRO ESCOLAR PROFESOR OSCAR ARMANDO GUERRA CASTRO", "lat": 13.78384, "lng": -89.399576}, {"codigo": "11130", "nombre": "CENTRO ESCOLAR ORGANIZACION DE ESTADOS IBEROAMERIC", "lat": 13.684445, "lng": -89.301042}, {"codigo": "11307", "nombre": "INSTITUTO NACIONAL DE AGUILARES", "lat": 13.955686, "lng": -89.193213}, {"codigo": "11308", "nombre": "CENTRO ESCOLAR MODESTO BARRIOS", "lat": 13.956697, "lng": -89.185301}, {"codigo": "11314", "nombre": "CENTRO ESCOLAR CELSA PALACIOS", "lat": 13.945214, "lng": -89.187689}, {"codigo": "11317", "nombre": "CENTRO ESCOLAR SAN SEBASTIAN", "lat": 13.798468, "lng": -89.177416}, {"codigo": "11319", "nombre": "COMPLEJO EDUCATIVO PROFESOR IVAN ALEXANDER BURGOS", "lat": 13.800573, "lng": -89.163139}, {"codigo": "11321", "nombre": "CENTRO ESCOLAR COLONIA LA ERMITA", "lat": 13.81117, "lng": -89.178168}, {"codigo": "11323", "nombre": "CENTRO ESCOLAR PROFESOR ROMEO HUMBERTO GONZALEZ", "lat": 13.788256, "lng": -89.178512}, {"codigo": "11330", "nombre": "INSTITUTO NACIONAL DE APOPA", "lat": 13.804144, "lng": -89.181574}, {"codigo": "11331", "nombre": "CENTRO ESCOLAR CANTON EL ANGEL", "lat": 13.795033, "lng": -89.187344}, {"codigo": "11336", "nombre": "CENTRO ESCOLAR COLONIA LAS CAÑAS", "lat": 13.813181, "lng": -89.170438}, {"codigo": "11337", "nombre": "COMPLEJO EDUCATIVO SARA PALMA DE JULE", "lat": 13.817594, "lng": -89.181067}, {"codigo": "11338", "nombre": "CENTRO ESCOLAR REPUBLICA DE CHINA", "lat": 13.811828, "lng": -89.181355}, {"codigo": "11340", "nombre": "COMPLEJO EDUCATIVO INGENIERO JOSE NAPOLEON DUARTE", "lat": 13.814597, "lng": -89.186678}, {"codigo": "11342", "nombre": "CENTRO ESCOLAR DE POPOTLAN", "lat": 13.80046, "lng": -89.170009}, {"codigo": "11343", "nombre": "CENTRO ESCOLAR ASENTAMIENTO DE LA COLONIA POPOTLAN", "lat": 13.803091, "lng": -89.167548}, {"codigo": "11344", "nombre": "CENTRO ESCOLAR VICENTE ACOSTA", "lat": 13.80363, "lng": -89.18179}, {"codigo": "11349", "nombre": "COMPLEJO EDUCATIVO INGENIERO GUILLERMO BORJA NATHA", "lat": 13.80597, "lng": -89.194629}, {"codigo": "11353", "nombre": "CENTRO ESCOLAR DOCTOR DOROTEO VASCONCELOS", "lat": 13.735026, "lng": -89.200835}, {"codigo": "11354", "nombre": "CENTRO ESCOLAR DOCTOR ARTURO ROMERO", "lat": 13.734303, "lng": -89.204204}, {"codigo": "11365", "nombre": "COMPLEJO EDUCATIVO LA PAZ", "lat": 13.732057, "lng": -89.181286}, {"codigo": "11367", "nombre": "COMPLEJO EDUCATIVO ANGELA DE SOLER", "lat": 13.769183, "lng": -89.18413}, {"codigo": "11385", "nombre": "CENTRO ESCOLAR CANTON SAN JERONIMO", "lat": 13.922065, "lng": -89.184635}, {"codigo": "11386", "nombre": "CENTRO ESCOLAR SALVADOR SALAZAR ARRUE", "lat": 13.873527, "lng": -89.168884}, {"codigo": "11394", "nombre": "CENTRO ESCOLAR JARDINES DE SELT-SUTT", "lat": 13.712139, "lng": -89.086065}, {"codigo": "11395", "nombre": "INSTITUTO NACIONAL DE SAN BARTOLO", "lat": 13.705475, "lng": -89.10436}, {"codigo": "11400", "nombre": "COMPLEJO EDUCATIVO CANTON SAN BARTOLO", "lat": 13.707955, "lng": -89.099632}, {"codigo": "11406", "nombre": "COMPLEJO EDUCATIVOCOLONIA VERACRUZ, CANTON SAN BAR", "lat": 13.715571, "lng": -89.092844}, {"codigo": "11409", "nombre": "CENTRO ESCOLAR REPUBLICA DE VENEZUELA", "lat": 13.689434, "lng": -89.132155}, {"codigo": "11411", "nombre": "CENTRO ESCOLAR JOHN F. KENNEDY", "lat": 13.689543, "lng": -89.128838}, {"codigo": "11414", "nombre": "CENTRO ESCOLAR REPUBLICA DE FRANCIA", "lat": 13.734279, "lng": -89.192068}, {"codigo": "11420", "nombre": "INSTITUTO NACIONAL MAESTRO ALBERTO MASFERRER", "lat": 13.727501, "lng": -89.20407}, {"codigo": "11422", "nombre": "COMPLEJO EDUCATIVO REPUBLICA ORIENTAL DEL URUGUAY", "lat": 13.72744, "lng": -89.20462}, {"codigo": "11426", "nombre": "CENTRO ESCOLAR CANTON SAN ROQUE", "lat": 13.744354, "lng": -89.218853}, {"codigo": "11427", "nombre": "COMPLEJO EDUCATIVO REINO DE SUECIA", "lat": 13.738877, "lng": -89.208701}, {"codigo": "11431", "nombre": "COMPLEJO EDUCATIVO PROFESORA HERMINIA MARTINEZ ALV", "lat": 13.734364, "lng": -89.224312}, {"codigo": "11433", "nombre": "COMPLEJO EDUCATIVO PROFESORA MARIA AMANDA ARTIGA D", "lat": 13.781476, "lng": -89.177977}, {"codigo": "11436", "nombre": "COMPLEJO EDUCATIVO AMALIA VDA. DE MENENDEZ", "lat": 13.724829, "lng": -89.188735}, {"codigo": "11437", "nombre": "CENTRO ESCOLAR 22 DE JUNIO", "lat": 13.72332, "lng": -89.188154}, {"codigo": "11438", "nombre": "COMPLEJO EDUCATIVO JAPON", "lat": 13.727164, "lng": -89.190171}, {"codigo": "11439", "nombre": "CENTRO ESCOLAR COLONIA SAN SIMON", "lat": 13.737535, "lng": -89.185947}, {"codigo": "11440", "nombre": "CENTRO ESCOLAR CANTÓN MAPILAPA", "lat": 13.818488, "lng": -89.257493}, {"codigo": "11443", "nombre": "CENTRO ESCOLAR CANTON ALDEA DE LAS MERCEDES", "lat": 13.803508, "lng": -89.225865}, {"codigo": "11451", "nombre": "CENTRO ESCOLAR JOSE MATIAS DELGADO", "lat": 13.811194, "lng": -89.229625}, {"codigo": "11453", "nombre": "COMPLEJO EDUCATIVO PROFESOR ALBERTO MONTIEL V.", "lat": 13.831917, "lng": -89.225804}, {"codigo": "11457", "nombre": "CENTRO ESCOLAR CANTON SANTA LUCIA LOS PALONES", "lat": 13.634386, "lng": -89.168039}, {"codigo": "11471", "nombre": "COMPLEJO EDUCATIVO MANUEL JOSE ARCE", "lat": 13.576754, "lng": -89.204239}, {"codigo": "11474", "nombre": "CENTRO ESCOLAR CANTON LAS BARROSAS", "lat": 13.543607, "lng": -89.195798}, {"codigo": "11482", "nombre": "COMPLEJO EDUCATIVO COLONIA EL MILAGRO", "lat": 13.663358, "lng": -89.182185}, {"codigo": "11483", "nombre": "CENTRO ESCOLAR DOCTOR EUSEBIO CORDON CEA", "lat": 13.65522, "lng": -89.173343}, {"codigo": "11486", "nombre": "COMPLEJO EDUCATIVO COLONIA SAN ANTONIO", "lat": 13.654829, "lng": -89.186351}, {"codigo": "11488", "nombre": "CENTRO ESCOLAR PROFESOR JUSTO GONZALEZ", "lat": 13.656594, "lng": -89.184962}, {"codigo": "11489", "nombre": "COMPLEJO EDUCATIVO COMUNIDAD 10 DE OCTUBRE", "lat": 13.65207, "lng": -89.165455}, {"codigo": "11493", "nombre": "CENTRO ESCOLAR DOMINGO FAUSTINO SARMIENTO", "lat": 13.667384, "lng": -89.189545}, {"codigo": "11495", "nombre": "COMPLEJO EDUCATIVO GOLDTREE LIEBES", "lat": 13.64164, "lng": -89.189115}, {"codigo": "11499", "nombre": "COMPLEJO EDUCATIVO COLONIA TIERRA VIRGEN", "lat": 13.716209, "lng": -89.084048}, {"codigo": "11500", "nombre": "CENTRO ESCOLAR OLOF PALME", "lat": 13.737816, "lng": -89.054851}, {"codigo": "11501", "nombre": "CENTRO ESCOLAR URBANIZACION SANTA TERESA", "lat": 13.748288, "lng": -89.058845}, {"codigo": "11507", "nombre": "COMPLEJO EDUCATIVO JORGE LARDE", "lat": 13.734779, "lng": -89.059149}, {"codigo": "11508", "nombre": "CENTRO ESCOLAR COLONIA LA PALMA, CANTON LA PALMA", "lat": 13.715319, "lng": -89.071978}, {"codigo": "11512", "nombre": "CENTRO ESCOLAR CANTON LA PALMA", "lat": 13.721173, "lng": -89.068626}, {"codigo": "11516", "nombre": "CENTRO ESCOLAR CANTON LA FLOR", "lat": 13.734985, "lng": -89.043294}, {"codigo": "11518", "nombre": "COMPLEJO EDUCATIVO COLONIA ROSA LINDA", "lat": 13.742279, "lng": -89.057355}, {"codigo": "11522", "nombre": "INSTITUTO NACIONAL ALBERT CAMUS", "lat": 13.714816, "lng": -89.206404}, {"codigo": "11531", "nombre": "CENTRO ESCOLAR COLONIA LLANO VERDE", "lat": 13.698603, "lng": -89.105629}, {"codigo": "11532", "nombre": "CENTRO ESCOLAR GENERAL FRANCISCO MORAZAN", "lat": 13.715622, "lng": -89.205302}, {"codigo": "11574", "nombre": "CENTRO ESCOLAR REPUBLICA DE CANADA", "lat": 13.690446, "lng": -89.235955}, {"codigo": "11580", "nombre": "CENTRO ESCOLAR AMATEPEC", "lat": 13.696247, "lng": -89.169245}, {"codigo": "11592", "nombre": "CENTRO ESCOLAR JOSE MEJIA", "lat": 13.668459, "lng": -89.223889}, {"codigo": "11593", "nombre": "CENTRO ESCOLAR SAN ANTONIO ABAD", "lat": 13.712904, "lng": -89.22405}, {"codigo": "11594", "nombre": "CENTRO ESCOLAR JUANA LOPEZ", "lat": 13.717258, "lng": -89.228851}, {"codigo": "11597", "nombre": "CENTRO ESCOLAR JUAN RAMON JIMENEZ", "lat": 13.685157, "lng": -89.22544}, {"codigo": "11598", "nombre": "CENTRO ESCOLAR REPUBLICA DE ITALIA", "lat": 13.710011, "lng": -89.259782}, {"codigo": "11626", "nombre": "CENTRO ESCOLAR SALVADOR MUGDAN", "lat": 13.709315, "lng": -89.185942}, {"codigo": "11627", "nombre": "CENTRO ESCOLAR SANTIAGO I BARBERENA", "lat": 13.692441, "lng": -89.208952}, {"codigo": "11631", "nombre": "CENTRO ESCOLAR LYNDON B. JOHNSON", "lat": 13.675768, "lng": -89.189583}, {"codigo": "11640", "nombre": "COMPLEJO EDUCATIVO CAPITAN GENERAL GERARDO BARRIOS", "lat": 13.699431, "lng": -89.212294}, {"codigo": "11641", "nombre": "CENTRO ESCOLAR CONSTITUCION 1950", "lat": 13.707817, "lng": -89.180848}, {"codigo": "11645", "nombre": "CENTRO ESCOLAR MIGUEL PINTO", "lat": 13.722699, "lng": -89.211591}, {"codigo": "11648", "nombre": "CENTRO ESCOLAR REPUBLICA DE HONDURAS", "lat": 13.68905, "lng": -89.209165}, {"codigo": "11650", "nombre": "CENTRO ESCOLAR MONSEÑOR BASILIO PLANTIER", "lat": 13.694297, "lng": -89.182082}, {"codigo": "11651", "nombre": "CENTRO ESCOLAR JORGE LARDE", "lat": 13.687328, "lng": -89.189959}, {"codigo": "11661", "nombre": "COMPLEJO EDUCATIVO REPUBLICA DEL BRASIL", "lat": 13.686332, "lng": -89.195397}, {"codigo": "11665", "nombre": "CENTRO ESCOLAR JOSE SIMEON CAÑAS", "lat": 13.681081, "lng": -89.191367}, {"codigo": "11667", "nombre": "COMPLEJO EDUCATIVO JOAQUIN RODEZNO", "lat": 13.701335, "lng": -89.195274}, {"codigo": "11668", "nombre": "CENTRO ESCOLAR JOSE MATIAS DELGADO", "lat": 13.692774, "lng": -89.193215}, {"codigo": "11669", "nombre": "CENTRO ESCOLAR GENERAL RAMON BELLOSO", "lat": 13.683019, "lng": -89.214622}, {"codigo": "11674", "nombre": "COMPLEJO EDUCATIVO DR. HUMBERTO ROMERO ALVERGUE", "lat": 13.685837, "lng": -89.193333}, {"codigo": "11675", "nombre": "CENTRO ESCOLAR LIGA PANAMERICANA", "lat": 13.681828, "lng": -89.183645}, {"codigo": "11677", "nombre": "COMPLEJO EDUCATIVO REPUBLICA DEL ECUADOR", "lat": 13.689142, "lng": -89.201627}, {"codigo": "11679", "nombre": "COMPLEJO EDUCATIVO REPUBLICA DE COSTA RICA", "lat": 13.695629, "lng": -89.188563}, {"codigo": "11680", "nombre": "CENTRO ESCOLAR REPUBLICA DE CHILE", "lat": 13.702168, "lng": -89.182356}, {"codigo": "11695", "nombre": "CENTRO ESCOLAR GENERAL MANUEL BELGRANO", "lat": 13.642588, "lng": -89.133748}, {"codigo": "11708", "nombre": "INSTITUTO NACIONAL SAN LUIS", "lat": 13.714151, "lng": -89.131377}, {"codigo": "11711", "nombre": "CENTRO ESCOLAR BOSQUES DEL RIO", "lat": 13.720576, "lng": -89.120894}, {"codigo": "11712", "nombre": "COMPLEJO EDUCATIVO COLONIA VILLA ALEGRE", "lat": 13.735578, "lng": -89.139782}, {"codigo": "11715", "nombre": "CENTRO ESCOLAR REPARTO LOS SANTOS", "lat": 13.712501, "lng": -89.135524}, {"codigo": "11716", "nombre": "CENTRO ESCOLAR RAFAELA SOTOMAYOR DE ALARCIA", "lat": 13.709548, "lng": -89.144641}, {"codigo": "11723", "nombre": "COMPLEJO EDUCATIVO REPUBLICA DE COREA", "lat": 13.712283, "lng": -89.148464}, {"codigo": "11724", "nombre": "CENTRO ESCOLAR COLONIA GUAYACAN", "lat": 13.713742, "lng": -89.124601}, {"codigo": "11731", "nombre": "CENTRO ESCOLAR COLONIA SAN RAFAEL", "lat": 13.682353, "lng": -89.140356}, {"codigo": "11732", "nombre": "CENTRO ESCOLAR ANTONIO JOSE CAÑAS", "lat": 13.704505, "lng": -89.154855}, {"codigo": "11735", "nombre": "CENTRO ESCOLAR BARRIO EL PROGRESO", "lat": 13.706958, "lng": -89.155239}, {"codigo": "11736", "nombre": "CENTRO ESCOLAR PROFESOR DANIEL CORDON SALGUERO", "lat": 13.704996, "lng": -89.145206}, {"codigo": "11740", "nombre": "CENTRO ESCOLAR PROFESORA MARIA INOCENCIA DE PAREDE", "lat": 13.816149, "lng": -89.1436}, {"codigo": "11745", "nombre": "CENTRO ESCOLAR CANTON VERACRUZ", "lat": 13.736081, "lng": -89.093867}, {"codigo": "11751", "nombre": "COMPLEJO EDUCATIVO FE Y ALEGRIA", "lat": 13.818892, "lng": -89.139358}, {"codigo": "11752", "nombre": "CENTRO ESCOLAR PRESBITERO NICOLAS AGUILAR", "lat": 13.779604, "lng": -89.119678}, {"codigo": "11759", "nombre": "CENTRO ESCOLAR COMUNIDAD PRADERA III", "lat": 13.793202, "lng": -89.162214}, {"codigo": "11764", "nombre": "CENTRO ESCOLAR CANTON CALLE REAL", "lat": 13.758179, "lng": -89.166753}, {"codigo": "11765", "nombre": "CENTRO ESCOLAR CANTON ARENAL", "lat": 13.759382, "lng": -89.178614}, {"codigo": "11767", "nombre": "CENTRO ESCOLAR CANTON SAN JOSE CORTEZ", "lat": 13.754729, "lng": -89.145528}, {"codigo": "11769", "nombre": "CENTRO ESCOLAR CASERIO SAN ANTONIO LAS VEGAS", "lat": 13.770507, "lng": -89.166783}, {"codigo": "11770", "nombre": "CENTRO ESCOLAR EDELMIRA MOLINA", "lat": 13.718074, "lng": -89.169893}, {"codigo": "11771", "nombre": "CENTRO ESCOLAR REINO DE HOLANDA", "lat": 13.712889, "lng": -89.173026}, {"codigo": "11777", "nombre": "CENTRO ESCOLAR CANTON MILINGO", "lat": 13.744367, "lng": -89.168781}, {"codigo": "11922", "nombre": "COMPLEJO EDUCATIVO CANTON EL PEDREGAL", "lat": 13.443175, "lng": -89.016759}, {"codigo": "11932", "nombre": "COMPLEJO EDUCATIVO MERCEDES LA CEIBA", "lat": 13.647466, "lng": -88.912794}, {"codigo": "11933", "nombre": "COMPLEJO EDUCATIVO CASERIO VALLE NUEVO", "lat": 13.477823, "lng": -89.156951}, {"codigo": "11935", "nombre": "INSTITUTO NACIONAL DE OLOCUILTA", "lat": 13.576319, "lng": -89.11629}, {"codigo": "11937", "nombre": "CENTRO ESCOLAR PROFESORA MARIA EVANGELINA ALVAREZ", "lat": 13.613288, "lng": -89.122247}, {"codigo": "11941", "nombre": "CENTRO ESCOLAR PROFESORA ROSA MIRIAN ABREGO DE HER", "lat": 13.50565, "lng": -89.140985}, {"codigo": "11943", "nombre": "COMPLEJO EDUCATIVO ALBERTO MASFERRER", "lat": 13.572435, "lng": -89.116454}, {"codigo": "11944", "nombre": "CENTRO ESCOLAR CANTON SAN SEBASTIAN", "lat": 13.540353, "lng": -89.129142}, {"codigo": "11946", "nombre": "CENTRO ESCOLAR MARIA ESTER ALFARO", "lat": 13.571358, "lng": -89.038357}, {"codigo": "11952", "nombre": "CENTRO ESCOLAR CANTON CONCEPCION LOURDES", "lat": 13.637325, "lng": -88.988368}, {"codigo": "11954", "nombre": "INSTITUTO NACIONAL DE SAN EMIGDIO", "lat": 13.649283, "lng": -88.976656}, {"codigo": "11955", "nombre": "CENTRO ESCOLAR AMALIA ROSALES CAMPOS", "lat": 13.575272, "lng": -89.096944}, {"codigo": "11959", "nombre": "COMPLEJO EDUCATIVO CLAUDIA LARS", "lat": 13.608822, "lng": -89.095446}, {"codigo": "11962", "nombre": "CENTRO ESCOLAR CANTON EL GOLFO", "lat": 13.439704, "lng": -88.91586}, {"codigo": "11964", "nombre": "CENTRO ESCOLAR CANTON LA LAGUNETA", "lat": 13.593117, "lng": -88.874572}, {"codigo": "11975", "nombre": "CENTRO ESCOLAR PROFESORA JUANA SARA LOPEZ DE MIRAN", "lat": 13.504561, "lng": -89.088374}, {"codigo": "11988", "nombre": "INSTITUTO NACIONAL DE SAN LUIS TALPA", "lat": 13.476213, "lng": -89.087755}, {"codigo": "11991", "nombre": "CENTRO ESCOLAR CASERIO EL SALAMAR", "lat": 13.470884, "lng": -89.056729}, {"codigo": "11992", "nombre": "CENTRO ESCOLAR CANTON NUEVO EDEN", "lat": 13.474328, "lng": -89.077931}, {"codigo": "12000", "nombre": "CENTRO ESCOLAR CANTON SAN BARTOLO", "lat": 13.628033, "lng": -88.991292}, {"codigo": "12001", "nombre": "CENTRO ESCOLAR LA PAZ", "lat": 13.618606, "lng": -89.022754}, {"codigo": "12012", "nombre": "COMPLEJO EDUCATIVO CANTON LAS ISLETAS", "lat": 13.407543, "lng": -89.010495}, {"codigo": "12015", "nombre": "CENTRO ESCOLAR MARIA TERESA DUKE", "lat": 13.489343, "lng": -89.047074}, {"codigo": "12017", "nombre": "CENTRO ESCOLAR NEMESIA LUNA", "lat": 13.547575, "lng": -89.036174}, {"codigo": "12032", "nombre": "CENTRO ESCOLAR PROFESOR JOSÉ RICARDO CATIVO", "lat": 13.513503, "lng": -88.914753}, {"codigo": "12049", "nombre": "INSTITUTO NACIONAL JOSE INGENIEROS", "lat": 13.50768, "lng": -88.938282}, {"codigo": "12051", "nombre": "CENTRO ESCOLAR CENTRO AMERICA", "lat": 13.53015, "lng": -88.970256}, {"codigo": "12053", "nombre": "CENTRO ESCOLAR ANASTACIO AQUINO", "lat": 13.534682, "lng": -88.922209}, {"codigo": "12059", "nombre": "CENTRO ESCOLAR CASERIO LA FLECHA", "lat": 13.492093, "lng": -88.99915}, {"codigo": "12061", "nombre": "CENTRO ESCOLAR 14 DE ABRIL", "lat": 13.513907, "lng": -88.969181}, {"codigo": "12124", "nombre": "CENTRO ESCOLAR CATARINO DE JESUS ORTIZ", "lat": 13.510879, "lng": -88.87052}, {"codigo": "13663", "nombre": "COMPLEJO EDUCATIVO REPUBLICA DOMINICANA", "lat": 13.716795, "lng": -89.190562}, {"codigo": "13668", "nombre": "CENTRO ESCOLAR AGUSTIN LINARES", "lat": 13.715527, "lng": -89.130282}, {"codigo": "13671", "nombre": "CENTRO ESCOLAR LA PONDEROSA", "lat": 13.817345, "lng": -89.180361}, {"codigo": "13713", "nombre": "CENTRO ESCOLAR URBANIZACION LAS MARGARITAS", "lat": 13.723311, "lng": -89.143354}, {"codigo": "14806", "nombre": "CENTRO ESCOLAR ALTAVISTA", "lat": 13.720307, "lng": -89.098011}, {"codigo": "14808", "nombre": "INSTITUTO NACIONAL DE LA COLONIA SANTA LUCIA", "lat": 13.688507, "lng": -89.130658}, {"codigo": "14812", "nombre": "COMPLEJO EDUCATIVO CIUDAD FUTURA", "lat": 13.787207, "lng": -89.186424}, {"codigo": "60247", "nombre": "CENTRO ESCOLAR URBANIZACION CUMBRES DE SAN BARTOLO", "lat": 13.730671, "lng": -89.111479}, {"codigo": "60250", "nombre": "CENTRO ESCOLAR CASERIO RESIDENCIAL ALTAVISTA CANTON VERACRUZ", "lat": 13.734653, "lng": -89.088485}, {"codigo": "60321", "nombre": "CENTRO ESCOLAR CASERIO EL GUAYABO CANTON SAN ISIDRO LOS PLANES", "lat": 13.728793, "lng": -89.269276}, {"codigo": "68097", "nombre": "CENTRO ESCOLAR CANTON SEGURA", "lat": 13.940169, "lng": -89.23211}, {"codigo": "70001", "nombre": "COMPLEJO EDUCATIVO CANTON LOS MANGOS", "lat": 13.963686, "lng": -89.196535}, {"codigo": "70041", "nombre": "CENTRO ESCOLAR CANTON AMAYON", "lat": 13.517006, "lng": -89.170156}, {"codigo": "70042", "nombre": "COMPLEJO EDUCATIVO CASERIO PLAN DEL MANGO, CANTON", "lat": 13.506397, "lng": -89.196005}, {"codigo": "70046", "nombre": "CENTRO ESCOLAR CANTON AZACUALPA", "lat": 13.540411, "lng": -89.175897}, {"codigo": "70063", "nombre": "CENTRO ESCOLAR CASERIO COMUNIDAD SAN ANDRES, CANTO", "lat": 13.721621, "lng": -89.074797}, {"codigo": "70064", "nombre": "COMPLEJO EDUCATIVO CASERIO COMUNIDAD VALLE LAS DEL", "lat": 13.724162, "lng": -89.085577}, {"codigo": "70070", "nombre": "COMPLEJO EDUCATIVO CANTON JOYA GRANDE", "lat": 13.666521, "lng": -89.091466}, {"codigo": "70080", "nombre": "CENTRO ESCOLAR CANTON EL GUAJE", "lat": 13.637455, "lng": -89.147087}, {"codigo": "70093", "nombre": "CENTRO ESCOLAR CASERIO URBANIZACION LIRIOS DEL NOR", "lat": 13.768344, "lng": -89.17568}, {"codigo": "86237", "nombre": "CENTRO ESCOLAR CANTON LA UNION", "lat": 13.741244, "lng": -89.102124}, {"codigo": "86332", "nombre": "COMPLEJO EDUCATIVO URBANIZACION MONTECARMELO, CANT", "lat": 13.770677, "lng": -89.181603}, {"codigo": "88036", "nombre": "COMPLEJO EDUCATIVO CATOLICO SANTA CATALINA", "lat": 13.801408, "lng": -89.1784334}, {"codigo": "90053", "nombre": "ESCUELA MUNICIPAL DE CIUDAD FUTURA FASE I", "lat": 13.784216, "lng": -89.184816}];
+// Lista de respaldo incrustada (sin GRUPO/FECHA); se reemplaza al cargar la pestaña "Escuelas" del sheet
+const ESCUELAS_FALLBACK = [{"codigo": "10057", "nombre": "CENTRO ESCOLAR CIUDAD CREDISA", "lat": 13.693645, "lng": -89.161384}, {"codigo": "10084", "nombre": "CENTRO ESCOLAR URBANIZACION MONTELIMAR", "lat": 13.598005, "lng": -89.123145}, {"codigo": "10096", "nombre": "CENTRO ESCOLAR SAN ANTONIO", "lat": 13.740462, "lng": -89.138871}, {"codigo": "10123", "nombre": "CENTRO ESCOLAR URB SANTA TERESA DE LAS FLORES", "lat": 13.812739, "lng": -89.166699}, {"codigo": "10160", "nombre": "COMPLEJO EDUCATIVO RESIDENCIAL ALTAVISTA", "lat": 13.735009, "lng": -89.080578}, {"codigo": "10209", "nombre": "CENTRO ESCOLAR JOSÉ RUBEN RIVERA RIVERA", "lat": 13.878994, "lng": -89.473111}, {"codigo": "11015", "nombre": "CENTRO ESCOLAR PROFESOR OSCAR ARMANDO GUERRA CASTRO", "lat": 13.78384, "lng": -89.399576}, {"codigo": "11130", "nombre": "CENTRO ESCOLAR ORGANIZACION DE ESTADOS IBEROAMERIC", "lat": 13.684445, "lng": -89.301042}, {"codigo": "11307", "nombre": "INSTITUTO NACIONAL DE AGUILARES", "lat": 13.955686, "lng": -89.193213}, {"codigo": "11308", "nombre": "CENTRO ESCOLAR MODESTO BARRIOS", "lat": 13.956697, "lng": -89.185301}, {"codigo": "11314", "nombre": "CENTRO ESCOLAR CELSA PALACIOS", "lat": 13.945214, "lng": -89.187689}, {"codigo": "11317", "nombre": "CENTRO ESCOLAR SAN SEBASTIAN", "lat": 13.798468, "lng": -89.177416}, {"codigo": "11319", "nombre": "COMPLEJO EDUCATIVO PROFESOR IVAN ALEXANDER BURGOS", "lat": 13.800573, "lng": -89.163139}, {"codigo": "11321", "nombre": "CENTRO ESCOLAR COLONIA LA ERMITA", "lat": 13.81117, "lng": -89.178168}, {"codigo": "11323", "nombre": "CENTRO ESCOLAR PROFESOR ROMEO HUMBERTO GONZALEZ", "lat": 13.788256, "lng": -89.178512}, {"codigo": "11330", "nombre": "INSTITUTO NACIONAL DE APOPA", "lat": 13.804144, "lng": -89.181574}, {"codigo": "11331", "nombre": "CENTRO ESCOLAR CANTON EL ANGEL", "lat": 13.795033, "lng": -89.187344}, {"codigo": "11336", "nombre": "CENTRO ESCOLAR COLONIA LAS CAÑAS", "lat": 13.813181, "lng": -89.170438}, {"codigo": "11337", "nombre": "COMPLEJO EDUCATIVO SARA PALMA DE JULE", "lat": 13.817594, "lng": -89.181067}, {"codigo": "11338", "nombre": "CENTRO ESCOLAR REPUBLICA DE CHINA", "lat": 13.811828, "lng": -89.181355}, {"codigo": "11340", "nombre": "COMPLEJO EDUCATIVO INGENIERO JOSE NAPOLEON DUARTE", "lat": 13.814597, "lng": -89.186678}, {"codigo": "11342", "nombre": "CENTRO ESCOLAR DE POPOTLAN", "lat": 13.80046, "lng": -89.170009}, {"codigo": "11343", "nombre": "CENTRO ESCOLAR ASENTAMIENTO DE LA COLONIA POPOTLAN", "lat": 13.803091, "lng": -89.167548}, {"codigo": "11344", "nombre": "CENTRO ESCOLAR VICENTE ACOSTA", "lat": 13.80363, "lng": -89.18179}, {"codigo": "11349", "nombre": "COMPLEJO EDUCATIVO INGENIERO GUILLERMO BORJA NATHA", "lat": 13.80597, "lng": -89.194629}, {"codigo": "11353", "nombre": "CENTRO ESCOLAR DOCTOR DOROTEO VASCONCELOS", "lat": 13.735026, "lng": -89.200835}, {"codigo": "11354", "nombre": "CENTRO ESCOLAR DOCTOR ARTURO ROMERO", "lat": 13.734303, "lng": -89.204204}, {"codigo": "11365", "nombre": "COMPLEJO EDUCATIVO LA PAZ", "lat": 13.732057, "lng": -89.181286}, {"codigo": "11367", "nombre": "COMPLEJO EDUCATIVO ANGELA DE SOLER", "lat": 13.769183, "lng": -89.18413}, {"codigo": "11385", "nombre": "CENTRO ESCOLAR CANTON SAN JERONIMO", "lat": 13.922065, "lng": -89.184635}, {"codigo": "11386", "nombre": "CENTRO ESCOLAR SALVADOR SALAZAR ARRUE", "lat": 13.873527, "lng": -89.168884}, {"codigo": "11394", "nombre": "CENTRO ESCOLAR JARDINES DE SELT-SUTT", "lat": 13.712139, "lng": -89.086065}, {"codigo": "11395", "nombre": "INSTITUTO NACIONAL DE SAN BARTOLO", "lat": 13.705475, "lng": -89.10436}, {"codigo": "11400", "nombre": "COMPLEJO EDUCATIVO CANTON SAN BARTOLO", "lat": 13.707955, "lng": -89.099632}, {"codigo": "11406", "nombre": "COMPLEJO EDUCATIVOCOLONIA VERACRUZ, CANTON SAN BAR", "lat": 13.715571, "lng": -89.092844}, {"codigo": "11409", "nombre": "CENTRO ESCOLAR REPUBLICA DE VENEZUELA", "lat": 13.689434, "lng": -89.132155}, {"codigo": "11411", "nombre": "CENTRO ESCOLAR JOHN F. KENNEDY", "lat": 13.689543, "lng": -89.128838}, {"codigo": "11414", "nombre": "CENTRO ESCOLAR REPUBLICA DE FRANCIA", "lat": 13.734279, "lng": -89.192068}, {"codigo": "11420", "nombre": "INSTITUTO NACIONAL MAESTRO ALBERTO MASFERRER", "lat": 13.727501, "lng": -89.20407}, {"codigo": "11422", "nombre": "COMPLEJO EDUCATIVO REPUBLICA ORIENTAL DEL URUGUAY", "lat": 13.72744, "lng": -89.20462}, {"codigo": "11426", "nombre": "CENTRO ESCOLAR CANTON SAN ROQUE", "lat": 13.744354, "lng": -89.218853}, {"codigo": "11427", "nombre": "COMPLEJO EDUCATIVO REINO DE SUECIA", "lat": 13.738877, "lng": -89.208701}, {"codigo": "11431", "nombre": "COMPLEJO EDUCATIVO PROFESORA HERMINIA MARTINEZ ALV", "lat": 13.734364, "lng": -89.224312}, {"codigo": "11433", "nombre": "COMPLEJO EDUCATIVO PROFESORA MARIA AMANDA ARTIGA D", "lat": 13.781476, "lng": -89.177977}, {"codigo": "11436", "nombre": "COMPLEJO EDUCATIVO AMALIA VDA. DE MENENDEZ", "lat": 13.724829, "lng": -89.188735}, {"codigo": "11437", "nombre": "CENTRO ESCOLAR 22 DE JUNIO", "lat": 13.72332, "lng": -89.188154}, {"codigo": "11438", "nombre": "COMPLEJO EDUCATIVO JAPON", "lat": 13.727164, "lng": -89.190171}, {"codigo": "11439", "nombre": "CENTRO ESCOLAR COLONIA SAN SIMON", "lat": 13.737535, "lng": -89.185947}, {"codigo": "11440", "nombre": "CENTRO ESCOLAR CANTÓN MAPILAPA", "lat": 13.818488, "lng": -89.257493}, {"codigo": "11443", "nombre": "CENTRO ESCOLAR CANTON ALDEA DE LAS MERCEDES", "lat": 13.803508, "lng": -89.225865}, {"codigo": "11451", "nombre": "CENTRO ESCOLAR JOSE MATIAS DELGADO", "lat": 13.811194, "lng": -89.229625}, {"codigo": "11453", "nombre": "COMPLEJO EDUCATIVO PROFESOR ALBERTO MONTIEL V.", "lat": 13.831917, "lng": -89.225804}, {"codigo": "11457", "nombre": "CENTRO ESCOLAR CANTON SANTA LUCIA LOS PALONES", "lat": 13.634386, "lng": -89.168039}, {"codigo": "11471", "nombre": "COMPLEJO EDUCATIVO MANUEL JOSE ARCE", "lat": 13.576754, "lng": -89.204239}, {"codigo": "11474", "nombre": "CENTRO ESCOLAR CANTON LAS BARROSAS", "lat": 13.543607, "lng": -89.195798}, {"codigo": "11482", "nombre": "COMPLEJO EDUCATIVO COLONIA EL MILAGRO", "lat": 13.663358, "lng": -89.182185}, {"codigo": "11483", "nombre": "CENTRO ESCOLAR DOCTOR EUSEBIO CORDON CEA", "lat": 13.65522, "lng": -89.173343}, {"codigo": "11486", "nombre": "COMPLEJO EDUCATIVO COLONIA SAN ANTONIO", "lat": 13.654829, "lng": -89.186351}, {"codigo": "11488", "nombre": "CENTRO ESCOLAR PROFESOR JUSTO GONZALEZ", "lat": 13.656594, "lng": -89.184962}, {"codigo": "11489", "nombre": "COMPLEJO EDUCATIVO COMUNIDAD 10 DE OCTUBRE", "lat": 13.65207, "lng": -89.165455}, {"codigo": "11493", "nombre": "CENTRO ESCOLAR DOMINGO FAUSTINO SARMIENTO", "lat": 13.667384, "lng": -89.189545}, {"codigo": "11495", "nombre": "COMPLEJO EDUCATIVO GOLDTREE LIEBES", "lat": 13.64164, "lng": -89.189115}, {"codigo": "11499", "nombre": "COMPLEJO EDUCATIVO COLONIA TIERRA VIRGEN", "lat": 13.716209, "lng": -89.084048}, {"codigo": "11500", "nombre": "CENTRO ESCOLAR OLOF PALME", "lat": 13.737816, "lng": -89.054851}, {"codigo": "11501", "nombre": "CENTRO ESCOLAR URBANIZACION SANTA TERESA", "lat": 13.748288, "lng": -89.058845}, {"codigo": "11507", "nombre": "COMPLEJO EDUCATIVO JORGE LARDE", "lat": 13.734779, "lng": -89.059149}, {"codigo": "11508", "nombre": "CENTRO ESCOLAR COLONIA LA PALMA, CANTON LA PALMA", "lat": 13.715319, "lng": -89.071978}, {"codigo": "11512", "nombre": "CENTRO ESCOLAR CANTON LA PALMA", "lat": 13.721173, "lng": -89.068626}, {"codigo": "11516", "nombre": "CENTRO ESCOLAR CANTON LA FLOR", "lat": 13.734985, "lng": -89.043294}, {"codigo": "11518", "nombre": "COMPLEJO EDUCATIVO COLONIA ROSA LINDA", "lat": 13.742279, "lng": -89.057355}, {"codigo": "11522", "nombre": "INSTITUTO NACIONAL ALBERT CAMUS", "lat": 13.714816, "lng": -89.206404}, {"codigo": "11531", "nombre": "CENTRO ESCOLAR COLONIA LLANO VERDE", "lat": 13.698603, "lng": -89.105629}, {"codigo": "11532", "nombre": "CENTRO ESCOLAR GENERAL FRANCISCO MORAZAN", "lat": 13.715622, "lng": -89.205302}, {"codigo": "11574", "nombre": "CENTRO ESCOLAR REPUBLICA DE CANADA", "lat": 13.690446, "lng": -89.235955}, {"codigo": "11580", "nombre": "CENTRO ESCOLAR AMATEPEC", "lat": 13.696247, "lng": -89.169245}, {"codigo": "11592", "nombre": "CENTRO ESCOLAR JOSE MEJIA", "lat": 13.668459, "lng": -89.223889}, {"codigo": "11593", "nombre": "CENTRO ESCOLAR SAN ANTONIO ABAD", "lat": 13.712904, "lng": -89.22405}, {"codigo": "11594", "nombre": "CENTRO ESCOLAR JUANA LOPEZ", "lat": 13.717258, "lng": -89.228851}, {"codigo": "11597", "nombre": "CENTRO ESCOLAR JUAN RAMON JIMENEZ", "lat": 13.685157, "lng": -89.22544}, {"codigo": "11598", "nombre": "CENTRO ESCOLAR REPUBLICA DE ITALIA", "lat": 13.710011, "lng": -89.259782}, {"codigo": "11626", "nombre": "CENTRO ESCOLAR SALVADOR MUGDAN", "lat": 13.709315, "lng": -89.185942}, {"codigo": "11627", "nombre": "CENTRO ESCOLAR SANTIAGO I BARBERENA", "lat": 13.692441, "lng": -89.208952}, {"codigo": "11631", "nombre": "CENTRO ESCOLAR LYNDON B. JOHNSON", "lat": 13.675768, "lng": -89.189583}, {"codigo": "11640", "nombre": "COMPLEJO EDUCATIVO CAPITAN GENERAL GERARDO BARRIOS", "lat": 13.699431, "lng": -89.212294}, {"codigo": "11641", "nombre": "CENTRO ESCOLAR CONSTITUCION 1950", "lat": 13.707817, "lng": -89.180848}, {"codigo": "11645", "nombre": "CENTRO ESCOLAR MIGUEL PINTO", "lat": 13.722699, "lng": -89.211591}, {"codigo": "11648", "nombre": "CENTRO ESCOLAR REPUBLICA DE HONDURAS", "lat": 13.68905, "lng": -89.209165}, {"codigo": "11650", "nombre": "CENTRO ESCOLAR MONSEÑOR BASILIO PLANTIER", "lat": 13.694297, "lng": -89.182082}, {"codigo": "11651", "nombre": "CENTRO ESCOLAR JORGE LARDE", "lat": 13.687328, "lng": -89.189959}, {"codigo": "11661", "nombre": "COMPLEJO EDUCATIVO REPUBLICA DEL BRASIL", "lat": 13.686332, "lng": -89.195397}, {"codigo": "11665", "nombre": "CENTRO ESCOLAR JOSE SIMEON CAÑAS", "lat": 13.681081, "lng": -89.191367}, {"codigo": "11667", "nombre": "COMPLEJO EDUCATIVO JOAQUIN RODEZNO", "lat": 13.701335, "lng": -89.195274}, {"codigo": "11668", "nombre": "CENTRO ESCOLAR JOSE MATIAS DELGADO", "lat": 13.692774, "lng": -89.193215}, {"codigo": "11669", "nombre": "CENTRO ESCOLAR GENERAL RAMON BELLOSO", "lat": 13.683019, "lng": -89.214622}, {"codigo": "11674", "nombre": "COMPLEJO EDUCATIVO DR. HUMBERTO ROMERO ALVERGUE", "lat": 13.685837, "lng": -89.193333}, {"codigo": "11675", "nombre": "CENTRO ESCOLAR LIGA PANAMERICANA", "lat": 13.681828, "lng": -89.183645}, {"codigo": "11677", "nombre": "COMPLEJO EDUCATIVO REPUBLICA DEL ECUADOR", "lat": 13.689142, "lng": -89.201627}, {"codigo": "11679", "nombre": "COMPLEJO EDUCATIVO REPUBLICA DE COSTA RICA", "lat": 13.695629, "lng": -89.188563}, {"codigo": "11680", "nombre": "CENTRO ESCOLAR REPUBLICA DE CHILE", "lat": 13.702168, "lng": -89.182356}, {"codigo": "11695", "nombre": "CENTRO ESCOLAR GENERAL MANUEL BELGRANO", "lat": 13.642588, "lng": -89.133748}, {"codigo": "11708", "nombre": "INSTITUTO NACIONAL SAN LUIS", "lat": 13.714151, "lng": -89.131377}, {"codigo": "11711", "nombre": "CENTRO ESCOLAR BOSQUES DEL RIO", "lat": 13.720576, "lng": -89.120894}, {"codigo": "11712", "nombre": "COMPLEJO EDUCATIVO COLONIA VILLA ALEGRE", "lat": 13.735578, "lng": -89.139782}, {"codigo": "11715", "nombre": "CENTRO ESCOLAR REPARTO LOS SANTOS", "lat": 13.712501, "lng": -89.135524}, {"codigo": "11716", "nombre": "CENTRO ESCOLAR RAFAELA SOTOMAYOR DE ALARCIA", "lat": 13.709548, "lng": -89.144641}, {"codigo": "11723", "nombre": "COMPLEJO EDUCATIVO REPUBLICA DE COREA", "lat": 13.712283, "lng": -89.148464}, {"codigo": "11724", "nombre": "CENTRO ESCOLAR COLONIA GUAYACAN", "lat": 13.713742, "lng": -89.124601}, {"codigo": "11731", "nombre": "CENTRO ESCOLAR COLONIA SAN RAFAEL", "lat": 13.682353, "lng": -89.140356}, {"codigo": "11732", "nombre": "CENTRO ESCOLAR ANTONIO JOSE CAÑAS", "lat": 13.704505, "lng": -89.154855}, {"codigo": "11735", "nombre": "CENTRO ESCOLAR BARRIO EL PROGRESO", "lat": 13.706958, "lng": -89.155239}, {"codigo": "11736", "nombre": "CENTRO ESCOLAR PROFESOR DANIEL CORDON SALGUERO", "lat": 13.704996, "lng": -89.145206}, {"codigo": "11740", "nombre": "CENTRO ESCOLAR PROFESORA MARIA INOCENCIA DE PAREDE", "lat": 13.816149, "lng": -89.1436}, {"codigo": "11745", "nombre": "CENTRO ESCOLAR CANTON VERACRUZ", "lat": 13.736081, "lng": -89.093867}, {"codigo": "11751", "nombre": "COMPLEJO EDUCATIVO FE Y ALEGRIA", "lat": 13.818892, "lng": -89.139358}, {"codigo": "11752", "nombre": "CENTRO ESCOLAR PRESBITERO NICOLAS AGUILAR", "lat": 13.779604, "lng": -89.119678}, {"codigo": "11759", "nombre": "CENTRO ESCOLAR COMUNIDAD PRADERA III", "lat": 13.793202, "lng": -89.162214}, {"codigo": "11764", "nombre": "CENTRO ESCOLAR CANTON CALLE REAL", "lat": 13.758179, "lng": -89.166753}, {"codigo": "11765", "nombre": "CENTRO ESCOLAR CANTON ARENAL", "lat": 13.759382, "lng": -89.178614}, {"codigo": "11767", "nombre": "CENTRO ESCOLAR CANTON SAN JOSE CORTEZ", "lat": 13.754729, "lng": -89.145528}, {"codigo": "11769", "nombre": "CENTRO ESCOLAR CASERIO SAN ANTONIO LAS VEGAS", "lat": 13.770507, "lng": -89.166783}, {"codigo": "11770", "nombre": "CENTRO ESCOLAR EDELMIRA MOLINA", "lat": 13.718074, "lng": -89.169893}, {"codigo": "11771", "nombre": "CENTRO ESCOLAR REINO DE HOLANDA", "lat": 13.712889, "lng": -89.173026}, {"codigo": "11777", "nombre": "CENTRO ESCOLAR CANTON MILINGO", "lat": 13.744367, "lng": -89.168781}, {"codigo": "11922", "nombre": "COMPLEJO EDUCATIVO CANTON EL PEDREGAL", "lat": 13.443175, "lng": -89.016759}, {"codigo": "11932", "nombre": "COMPLEJO EDUCATIVO MERCEDES LA CEIBA", "lat": 13.647466, "lng": -88.912794}, {"codigo": "11933", "nombre": "COMPLEJO EDUCATIVO CASERIO VALLE NUEVO", "lat": 13.477823, "lng": -89.156951}, {"codigo": "11935", "nombre": "INSTITUTO NACIONAL DE OLOCUILTA", "lat": 13.576319, "lng": -89.11629}, {"codigo": "11937", "nombre": "CENTRO ESCOLAR PROFESORA MARIA EVANGELINA ALVAREZ", "lat": 13.613288, "lng": -89.122247}, {"codigo": "11941", "nombre": "CENTRO ESCOLAR PROFESORA ROSA MIRIAN ABREGO DE HER", "lat": 13.50565, "lng": -89.140985}, {"codigo": "11943", "nombre": "COMPLEJO EDUCATIVO ALBERTO MASFERRER", "lat": 13.572435, "lng": -89.116454}, {"codigo": "11944", "nombre": "CENTRO ESCOLAR CANTON SAN SEBASTIAN", "lat": 13.540353, "lng": -89.129142}, {"codigo": "11946", "nombre": "CENTRO ESCOLAR MARIA ESTER ALFARO", "lat": 13.571358, "lng": -89.038357}, {"codigo": "11952", "nombre": "CENTRO ESCOLAR CANTON CONCEPCION LOURDES", "lat": 13.637325, "lng": -88.988368}, {"codigo": "11954", "nombre": "INSTITUTO NACIONAL DE SAN EMIGDIO", "lat": 13.649283, "lng": -88.976656}, {"codigo": "11955", "nombre": "CENTRO ESCOLAR AMALIA ROSALES CAMPOS", "lat": 13.575272, "lng": -89.096944}, {"codigo": "11959", "nombre": "COMPLEJO EDUCATIVO CLAUDIA LARS", "lat": 13.608822, "lng": -89.095446}, {"codigo": "11962", "nombre": "CENTRO ESCOLAR CANTON EL GOLFO", "lat": 13.439704, "lng": -88.91586}, {"codigo": "11964", "nombre": "CENTRO ESCOLAR CANTON LA LAGUNETA", "lat": 13.593117, "lng": -88.874572}, {"codigo": "11975", "nombre": "CENTRO ESCOLAR PROFESORA JUANA SARA LOPEZ DE MIRAN", "lat": 13.504561, "lng": -89.088374}, {"codigo": "11988", "nombre": "INSTITUTO NACIONAL DE SAN LUIS TALPA", "lat": 13.476213, "lng": -89.087755}, {"codigo": "11991", "nombre": "CENTRO ESCOLAR CASERIO EL SALAMAR", "lat": 13.470884, "lng": -89.056729}, {"codigo": "11992", "nombre": "CENTRO ESCOLAR CANTON NUEVO EDEN", "lat": 13.474328, "lng": -89.077931}, {"codigo": "12000", "nombre": "CENTRO ESCOLAR CANTON SAN BARTOLO", "lat": 13.628033, "lng": -88.991292}, {"codigo": "12001", "nombre": "CENTRO ESCOLAR LA PAZ", "lat": 13.618606, "lng": -89.022754}, {"codigo": "12012", "nombre": "COMPLEJO EDUCATIVO CANTON LAS ISLETAS", "lat": 13.407543, "lng": -89.010495}, {"codigo": "12015", "nombre": "CENTRO ESCOLAR MARIA TERESA DUKE", "lat": 13.489343, "lng": -89.047074}, {"codigo": "12017", "nombre": "CENTRO ESCOLAR NEMESIA LUNA", "lat": 13.547575, "lng": -89.036174}, {"codigo": "12032", "nombre": "CENTRO ESCOLAR PROFESOR JOSÉ RICARDO CATIVO", "lat": 13.513503, "lng": -88.914753}, {"codigo": "12049", "nombre": "INSTITUTO NACIONAL JOSE INGENIEROS", "lat": 13.50768, "lng": -88.938282}, {"codigo": "12051", "nombre": "CENTRO ESCOLAR CENTRO AMERICA", "lat": 13.53015, "lng": -88.970256}, {"codigo": "12053", "nombre": "CENTRO ESCOLAR ANASTACIO AQUINO", "lat": 13.534682, "lng": -88.922209}, {"codigo": "12059", "nombre": "CENTRO ESCOLAR CASERIO LA FLECHA", "lat": 13.492093, "lng": -88.99915}, {"codigo": "12061", "nombre": "CENTRO ESCOLAR 14 DE ABRIL", "lat": 13.513907, "lng": -88.969181}, {"codigo": "12124", "nombre": "CENTRO ESCOLAR CATARINO DE JESUS ORTIZ", "lat": 13.510879, "lng": -88.87052}, {"codigo": "13663", "nombre": "COMPLEJO EDUCATIVO REPUBLICA DOMINICANA", "lat": 13.716795, "lng": -89.190562}, {"codigo": "13668", "nombre": "CENTRO ESCOLAR AGUSTIN LINARES", "lat": 13.715527, "lng": -89.130282}, {"codigo": "13671", "nombre": "CENTRO ESCOLAR LA PONDEROSA", "lat": 13.817345, "lng": -89.180361}, {"codigo": "13713", "nombre": "CENTRO ESCOLAR URBANIZACION LAS MARGARITAS", "lat": 13.723311, "lng": -89.143354}, {"codigo": "14806", "nombre": "CENTRO ESCOLAR ALTAVISTA", "lat": 13.720307, "lng": -89.098011}, {"codigo": "14808", "nombre": "INSTITUTO NACIONAL DE LA COLONIA SANTA LUCIA", "lat": 13.688507, "lng": -89.130658}, {"codigo": "14812", "nombre": "COMPLEJO EDUCATIVO CIUDAD FUTURA", "lat": 13.787207, "lng": -89.186424}, {"codigo": "60247", "nombre": "CENTRO ESCOLAR URBANIZACION CUMBRES DE SAN BARTOLO", "lat": 13.730671, "lng": -89.111479}, {"codigo": "60250", "nombre": "CENTRO ESCOLAR CASERIO RESIDENCIAL ALTAVISTA CANTON VERACRUZ", "lat": 13.734653, "lng": -89.088485}, {"codigo": "60321", "nombre": "CENTRO ESCOLAR CASERIO EL GUAYABO CANTON SAN ISIDRO LOS PLANES", "lat": 13.728793, "lng": -89.269276}, {"codigo": "68097", "nombre": "CENTRO ESCOLAR CANTON SEGURA", "lat": 13.940169, "lng": -89.23211}, {"codigo": "70001", "nombre": "COMPLEJO EDUCATIVO CANTON LOS MANGOS", "lat": 13.963686, "lng": -89.196535}, {"codigo": "70041", "nombre": "CENTRO ESCOLAR CANTON AMAYON", "lat": 13.517006, "lng": -89.170156}, {"codigo": "70042", "nombre": "COMPLEJO EDUCATIVO CASERIO PLAN DEL MANGO, CANTON", "lat": 13.506397, "lng": -89.196005}, {"codigo": "70046", "nombre": "CENTRO ESCOLAR CANTON AZACUALPA", "lat": 13.540411, "lng": -89.175897}, {"codigo": "70063", "nombre": "CENTRO ESCOLAR CASERIO COMUNIDAD SAN ANDRES, CANTO", "lat": 13.721621, "lng": -89.074797}, {"codigo": "70064", "nombre": "COMPLEJO EDUCATIVO CASERIO COMUNIDAD VALLE LAS DEL", "lat": 13.724162, "lng": -89.085577}, {"codigo": "70070", "nombre": "COMPLEJO EDUCATIVO CANTON JOYA GRANDE", "lat": 13.666521, "lng": -89.091466}, {"codigo": "70080", "nombre": "CENTRO ESCOLAR CANTON EL GUAJE", "lat": 13.637455, "lng": -89.147087}, {"codigo": "70093", "nombre": "CENTRO ESCOLAR CASERIO URBANIZACION LIRIOS DEL NOR", "lat": 13.768344, "lng": -89.17568}, {"codigo": "86237", "nombre": "CENTRO ESCOLAR CANTON LA UNION", "lat": 13.741244, "lng": -89.102124}, {"codigo": "86332", "nombre": "COMPLEJO EDUCATIVO URBANIZACION MONTECARMELO, CANT", "lat": 13.770677, "lng": -89.181603}, {"codigo": "88036", "nombre": "COMPLEJO EDUCATIVO CATOLICO SANTA CATALINA", "lat": 13.801408, "lng": -89.1784334}, {"codigo": "90053", "nombre": "ESCUELA MUNICIPAL DE CIUDAD FUTURA FASE I", "lat": 13.784216, "lng": -89.184816}];
+let ESCUELAS = ESCUELAS_FALLBACK;
 
 /* ================= ESTADO ================= */
 let registros = [];        // {fecha, hora, codigo, cargo, asistio}
@@ -270,45 +274,41 @@ function codigoDeEscuela(t){
   const m = String(t||"").match(/^\s*(\d{4,6})\s*-/);
   return m ? m[1] : null;
 }
-// gviz devuelve fechas como "Date(2026,5,10)" (mes base 0)
-function normalizarFecha(v, f){
-  if(f) return f; // valor formateado, ej. "2026-06-10"
-  const m = String(v||"").match(/Date\((\d+),(\d+),(\d+)/);
-  if(m){
-    const mes = String(parseInt(m[2],10)+1).padStart(2,"0");
-    const dia = String(m[3]).padStart(2,"0");
-    return `${m[1]}-${mes}-${dia}`;
-  }
-  return String(v||"").trim();
+// gviz devuelve fechas como "Date(2026,5,29)" (mes base 0); normaliza todo a YYYY-MM-DD
+function fechaISO(v, f){
+  let m = String(v||"").match(/Date\((\d+),(\d+),(\d+)/);
+  if(m) return `${m[1]}-${String(parseInt(m[2],10)+1).padStart(2,"0")}-${String(m[3]).padStart(2,"0")}`;
+  const t = String(f || v || "").trim();
+  m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m) return `${m[1]}-${m[2].padStart(2,"0")}-${m[3].padStart(2,"0")}`;
+  m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(m) return `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
+  m = t.match(/^(\d{1,2})-(\d{1,2})-(\d{4})/);
+  if(m) return `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
+  return t;
 }
 
 /* ================= CARGA DE DATOS ================= */
+let ultimoError = null;
+
 async function cargarDatos(){
   const btn = document.getElementById("btnActualizar");
   btn.disabled = true; btn.classList.add("cargando");
   ocultarAviso();
+  ultimoError = null;
 
-  let filas = null;
-  let ultimoError = null;
+  // 1) Pestaña "Escuelas": listado con GRUPO y FECHA programada por escuela
+  const filasEsc = await cargarTabla(SHEET_ESCUELAS, parsearEscuelasGviz, parsearEscuelasCSV);
+  if(filasEsc && filasEsc.length > 0){
+    const escConCoords = completarCoordenadas(filasEsc);
+    if(escConCoords.length > 0) ESCUELAS = escConCoords;
+  } // si falla, se conserva la última versión cargada (o el listado de respaldo incrustado)
 
-  // Método 1: fetch del JSON gviz
-  try{ filas = filasDesdeGviz(extraerJsonGviz(await fetchTexto(URL_JSON))); }
-  catch(e){ ultimoError = e; console.warn("Método JSON falló:", e.message); }
+  // 2) Pestaña "Asistencia": registros del equipo técnico
+  const filasAsis = await cargarTabla(SHEET_ASISTENCIA, filasDesdeGviz, filasDesdeCSV);
 
-  // Método 2: fetch del CSV gviz
-  if(!filas){
-    try{ filas = filasDesdeCSV(await fetchTexto(URL_CSV)); }
-    catch(e){ ultimoError = e; console.warn("Método CSV falló:", e.message); }
-  }
-
-  // Método 3: JSONP — carga el gviz como <script>, no está sujeto a CORS
-  if(!filas){
-    try{ filas = filasDesdeGviz(await cargarViaJsonp()); }
-    catch(e){ ultimoError = e; console.warn("Método JSONP falló:", e.message); }
-  }
-
-  if(filas){
-    registros = filas;
+  if(filasAsis){
+    registros = filasAsis;
     actualizarFechas();
     procesarYPintar();
     document.getElementById("ultima").textContent =
@@ -320,6 +320,18 @@ async function cargarDatos(){
       "Detalle: " + (ultimoError ? ultimoError.message : "desconocido"));
   }
   btn.disabled = false; btn.classList.remove("cargando");
+}
+
+// Intenta cargar una pestaña con tres métodos en cascada: fetch JSON, fetch CSV y JSONP
+async function cargarTabla(nombreHoja, parserGviz, parserCSV){
+  const urls = urlsGviz(nombreHoja);
+  try{ return parserGviz(extraerJsonGviz(await fetchTexto(urls.json))); }
+  catch(e){ ultimoError = e; console.warn(`[${nombreHoja}] método JSON falló:`, e.message); }
+  try{ return parserCSV(await fetchTexto(urls.csv)); }
+  catch(e){ ultimoError = e; console.warn(`[${nombreHoja}] método CSV falló:`, e.message); }
+  try{ return parserGviz(await cargarViaJsonp(urls.json)); }
+  catch(e){ ultimoError = e; console.warn(`[${nombreHoja}] método JSONP falló:`, e.message); }
+  return null;
 }
 
 async function fetchTexto(url){
@@ -337,7 +349,7 @@ function extraerJsonGviz(texto){
   return json;
 }
 
-function cargarViaJsonp(){
+function cargarViaJsonp(url){
   return new Promise((resolver, rechazar)=>{
     window.google = window.google || {};
     window.google.visualization = window.google.visualization || {};
@@ -351,7 +363,7 @@ function cargarViaJsonp(){
       }
     };
     const script = document.createElement("script");
-    script.src = URL_JSON + "&_=" + Date.now();
+    script.src = url + "&_=" + Date.now();
     script.onerror = ()=>{ limpiar(); rechazar(new Error("No se pudo cargar el script de Google Sheets (¿sin conexión o bloqueado?)")); };
     const tiempo = setTimeout(()=>{ limpiar(); rechazar(new Error("Tiempo de espera agotado (JSONP)")); }, 15000);
     function limpiar(){
@@ -380,7 +392,7 @@ function filasDesdeGviz(json){
     const cargo = cargoCanonico(celda(idx.cargo).v);
     if(!codigo || !cargo) continue;
     datos.push({
-      fecha: normalizarFecha(celda(idx.fecha).v, celda(idx.fecha).f),
+      fecha: fechaISO(celda(idx.fecha).v, celda(idx.fecha).f),
       hora: celda(idx.hora).f || String(celda(idx.hora).v || ""),
       codigo, cargo,
       asistio: esSi(celda(idx.asistencia).v)
@@ -408,13 +420,102 @@ function filasDesdeCSV(texto){
     const cargo = cargoCanonico(f[idx.cargo]);
     if(!codigo || !cargo) continue;
     datos.push({
-      fecha: String(f[idx.fecha]||"").trim(),
+      fecha: fechaISO(f[idx.fecha], null),
       hora: String(f[idx.hora]||"").trim(),
       codigo, cargo,
       asistio: esSi(f[idx.asistencia])
     });
   }
   return datos;
+}
+
+/* Pestaña Escuelas: CENTRO ESCOLAR (código-nombre), latitude, longitude, GRUPO, FECHA */
+function parsearEscuelasGviz(json){
+  const cols = (json.table.cols || []).map(c => normalizar(c.label));
+  const idx = idxEscuelas(cols);
+  const datos = [];
+  for(const f of (json.table.rows || [])){
+    const c = f.c || [];
+    const celda = i => (i >= 0 && c[i]) ? c[i] : {};
+    const e = armarEscuela(
+      celda(idx.codigo).v, celda(idx.nombre).v,
+      celda(idx.lat).v, celda(idx.lng).v,
+      celda(idx.grupo).v, fechaISO(celda(idx.fecha).v, celda(idx.fecha).f)
+    );
+    if(e) datos.push(e);
+  }
+  return datos;
+}
+
+function parsearEscuelasCSV(texto){
+  const lineas = texto.split(/\r?\n/).filter(l=>l.trim()!=="");
+  if(lineas.length < 2) return [];
+  const filas = lineas.map(divideCSV);
+  const cols = filas[0].map(c=>normalizar(c));
+  const idx = idxEscuelas(cols);
+  const datos = [];
+  for(let i=1;i<filas.length;i++){
+    const f = filas[i];
+    const val = j => (j >= 0 && f[j] !== undefined) ? f[j] : null;
+    const e = armarEscuela(val(idx.codigo), val(idx.nombre), val(idx.lat), val(idx.lng),
+                           val(idx.grupo), fechaISO(val(idx.fecha), null));
+    if(e) datos.push(e);
+  }
+  return datos;
+}
+
+function idxEscuelas(cols){
+  return {
+    codigo: indiceCol(cols, ["codigo sede","codigo ce","codigo"], -1),
+    nombre: indiceCol(cols, ["centro escolar","escuela","nombre"], 0),
+    lat: indiceCol(cols, ["latitude","latitud","lat"], -1),
+    lng: indiceCol(cols, ["longitude","longitud","lng","lon"], -1),
+    grupo: indiceCol(cols, ["grupo"], -1),
+    fecha: indiceCol(cols, ["fecha"], -1)
+  };
+}
+
+function armarEscuela(codigoV, nombreV, latV, lngV, grupoV, fechaV){
+  const nombreCompleto = String(nombreV || "").trim();
+  const codigo = (codigoV !== null && codigoV !== undefined && String(codigoV).trim() !== "")
+    ? String(codigoV).trim()
+    : codigoDeEscuela(nombreCompleto);
+  if(!codigo || !nombreCompleto) return null;
+  const lat = parseFloat(latV), lng = parseFloat(lngV);
+  return {
+    codigo,
+    nombre: nombreCompleto.replace(/^\s*\d+\s*-\s*/, ""),
+    lat: isNaN(lat) ? null : lat,
+    lng: isNaN(lng) ? null : lng,
+    grupo: (grupoV !== null && grupoV !== undefined) ? String(grupoV).trim() : "",
+    fecha: fechaV || ""
+  };
+}
+
+/* Coordenadas: usa las del sheet si son válidas (rango de El Salvador);
+   si faltan o son inválidas, las completa desde el listado incrustado por código */
+const COORDS_FALLBACK = {};
+ESCUELAS_FALLBACK.forEach(e => COORDS_FALLBACK[e.codigo] = [e.lat, e.lng]);
+
+function coordValida(lat, lng){
+  return typeof lat === "number" && typeof lng === "number" &&
+         lat > 12.5 && lat < 14.8 && lng > -90.5 && lng < -87.0;
+}
+
+function completarCoordenadas(lista){
+  const res = [];
+  for(const e of lista){
+    if(!coordValida(e.lat, e.lng)){
+      const c = COORDS_FALLBACK[e.codigo];
+      if(c){ e.lat = c[0]; e.lng = c[1]; }
+      else{
+        console.warn("Escuela sin coordenadas (omitida del mapa):", e.codigo, e.nombre);
+        continue;
+      }
+    }
+    res.push(e);
+  }
+  return res;
 }
 
 function divideCSV(linea){
@@ -444,23 +545,34 @@ function indiceCol(cols, candidatos, porDefecto){
 
 /* ================= FECHAS ================= */
 function actualizarFechas(){
-  fechasDisponibles = [...new Set(registros.map(r=>r.fecha).filter(Boolean))].sort().reverse();
+  // Las fechas vienen de la pestaña "Escuelas": día programado para cada escuela
+  fechasDisponibles = [...new Set(ESCUELAS.map(e=>e.fecha).filter(Boolean))].sort();
   const sel = document.getElementById("selFecha");
   const anterior = fechaSel;
   sel.innerHTML = "";
-  if(fechasDisponibles.length === 0){
-    sel.innerHTML = '<option value="">Sin fechas</option>';
-    fechaSel = null;
-    return;
-  }
+  const opTodas = document.createElement("option");
+  opTodas.value = "TODAS"; opTodas.textContent = "Fecha: TODAS";
+  sel.appendChild(opTodas);
   for(const f of fechasDisponibles){
     const op = document.createElement("option");
     op.value = f; op.textContent = "Fecha: " + f;
     sel.appendChild(op);
   }
-  // Mantener la fecha elegida si sigue existiendo; si no, usar la más reciente
-  fechaSel = fechasDisponibles.includes(anterior) ? anterior : fechasDisponibles[0];
+  const d = new Date();
+  const hoy = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  if(anterior && (anterior === "TODAS" || fechasDisponibles.includes(anterior))){
+    fechaSel = anterior;            // respeta la selección del usuario
+  }else if(fechasDisponibles.includes(hoy)){
+    fechaSel = hoy;                 // si hoy es un día programado, arranca en hoy
+  }else{
+    fechaSel = "TODAS";
+  }
   sel.value = fechaSel;
+}
+
+function escuelasEnFecha(){
+  if(!fechaSel || fechaSel === "TODAS") return ESCUELAS;
+  return ESCUELAS.filter(e => e.fecha === fechaSel);
 }
 
 /* ================= LÓGICA DE ESTADO ================= */
@@ -469,7 +581,6 @@ function procesarYPintar(){
   estadoPorEscuela = {};
   const ultimo = {}; // "codigo|cargo" -> asistio
   for(const r of registros){
-    if(r.fecha !== fechaSel) continue;
     ultimo[r.codigo + "|" + r.cargo] = r.asistio; // recorrido en orden: la fila más reciente queda
   }
   for(const e of ESCUELAS){
@@ -506,7 +617,8 @@ function pintarResumen(){
   let asistentes = 0, inasistentes = 0, sinReporte = 0;
   let verdes = 0, amarillas = 0, rojas = 0;
   const cargosConsiderados = cargoSel === "todos" ? CARGOS : [cargoSel];
-  for(const e of ESCUELAS){
+  const enFecha = escuelasEnFecha();
+  for(const e of enFecha){
     const est = estadoPorEscuela[e.codigo];
     if(est.color === "verde") verdes++;
     else if(est.color === "amarillo") amarillas++;
@@ -518,7 +630,7 @@ function pintarResumen(){
       else inasistentes++;
     }
   }
-  ponerValor("numEscuelas", ESCUELAS.length.toLocaleString("es-SV"));
+  ponerValor("numEscuelas", enFecha.length.toLocaleString("es-SV"));
   ponerValor("numAsistentes", asistentes.toLocaleString("es-SV"));
   ponerValor("numInasistentes", inasistentes.toLocaleString("es-SV"));
   ponerValor("numSinReporte", sinReporte.toLocaleString("es-SV"));
@@ -557,7 +669,9 @@ function pintarMapa(){
 
 function htmlPopup(e, est){
   let html = `<div class="popup-nombre">${e.nombre}</div>` +
-             `<div class="popup-codigo">Código ${e.codigo} · Fecha ${fechaSel || "–"}</div>`;
+             `<div class="popup-codigo">Código ${e.codigo}` +
+             (e.grupo ? ` · Grupo ${e.grupo}` : "") +
+             (e.fecha ? ` · ${e.fecha}` : "") + `</div>`;
   for(const c of CARGOS){
     const v = est.porCargo[c];
     const clase = v ? "si" : "no";
@@ -596,7 +710,7 @@ function pintarLista(){
       <div class="punto ${est.color}"></div>
       <div>
         <div class="nombre">${e.nombre}</div>
-        <div class="codigo">Código ${e.codigo}</div>
+        <div class="codigo">Código ${e.codigo}${e.grupo ? " · Grupo " + e.grupo : ""}${e.fecha ? " · " + e.fecha : ""}</div>
       </div>
       <div class="cifras">
         <div class="asis" style="color:${COLORES[est.color]}">${cifra}</div>
@@ -618,7 +732,7 @@ function pintarLista(){
 
 function escuelasFiltradas(){
   const q = normalizar(textoBusqueda);
-  return ESCUELAS.filter(e=>{
+  return escuelasEnFecha().filter(e=>{
     const est = estadoPorEscuela[e.codigo];
     if(!est) return false;
     if(filtroEstado !== "todas" && est.color !== filtroEstado) return false;
@@ -653,6 +767,7 @@ document.querySelectorAll(".chip").forEach(ch=>{
 
 document.getElementById("selFecha").addEventListener("change", ev=>{
   fechaSel = ev.target.value;
+  yaAjustado = false; // reencuadrar el mapa a las escuelas del día
   procesarYPintar();
 });
 
