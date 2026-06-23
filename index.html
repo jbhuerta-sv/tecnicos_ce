@@ -157,6 +157,7 @@
   <div class="header-derecha">
     <span class="ultima" id="ultima">Sin datos cargados</span>
     <select class="ctrl" id="selFecha" title="Fecha del reporte"></select>
+    <select class="ctrl" id="selTurno" title="Turno"></select>
     <select class="ctrl" id="autoRefresco" title="Actualización automática">
       <option value="0">Auto: apagado</option>
       <option value="60" selected>Auto: cada 1 min</option>
@@ -205,9 +206,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
 /* ================= CONFIGURACIÓN ================= */
-const SHEET_ID = "1yxXWe5mW_x2lqp3NUSO9Ef4iPgfnUzHkqqAAq6gzVlg";
-const SHEET_ASISTENCIA = "Asistencia";
-const SHEET_ESCUELAS = "Escuelas";
+const SHEET_ID = "1iKVDcj9fs3038lFzqmkrWwwIaCALMq3uM2zR_Ke_35o";
+const SHEET_ASISTENCIA = "Equipo Tecnico";   // pestaña de datos (filas por rol)
+const SHEET_ESCUELAS = "Centros Escolares";  // catálogo opcional (coordenadas)
 function urlsGviz(nombreHoja){
   const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(nombreHoja)}`;
   return {json: base + "&tqx=out:json", csv: base + "&tqx=out:csv"};
@@ -228,15 +229,17 @@ const ESCUELAS_FALLBACK = [{"codigo": "10057", "nombre": "CENTRO ESCOLAR CIUDAD 
 let ESCUELAS = ESCUELAS_FALLBACK;
 
 /* ================= ESTADO ================= */
-let registros = [];        // {fecha, hora, codigo, cargo, asistio}
+let registros = [];        // {codigo, centro, fecha, turno, cargo, asistio:null|true|false}
 let fechasDisponibles = [];
 let fechaSel = null;
+let turnoSel = "TODOS";
 let cargoSel = "todos";
 let filtroEstado = "todas";
 let textoBusqueda = "";
 let temporizador = null;
 let marcadores = {};       // codigo -> marker
-let estadoPorEscuela = {}; // codigo -> {color, porCargo:{cargo:{asistio}|null}, asistentes, inasistentes}
+let CATALOGO = {};         // codigo -> {nombre, lat, lng} (pestaña Centros Escolares)
+let estadoPorEscuela = {}; // codigo -> {color, porCargo:{cargo:asistio|null}, reportados, asistentes, inasistentes, pendientes, total}
 
 /* ================= MAPA ================= */
 const mapa = L.map("mapa").setView([13.70, -89.15], 10);
@@ -272,6 +275,23 @@ function esSi(t){
   const n = normalizar(t);
   return n === "si" || n === "s" || n === "1" || n === "true" || n === "asistio" || n === "x";
 }
+// Tri-estado de ASISTIO: ""→null (pendiente), 0→false (ausente), 1→true (presente)
+function valorAsistio(v){
+  if(v === null || v === undefined || String(v).trim() === "") return null;
+  return esSi(v);
+}
+// Toma el código (4-6 dígitos) de la celda CODIGO, sea número o texto "12345-NOMBRE"
+function codigoLimpio(v){
+  const m = String(v == null ? "" : v).match(/(\d{4,6})/);
+  return m ? m[1] : null;
+}
+// Combina el estado de un cargo cuando aparece en más de un turno (peor caso visible primero)
+function combinarAsistio(a, b){
+  const vals = [a, b].filter(v => v !== undefined);
+  if(vals.includes(false)) return false;
+  if(vals.includes(true)) return true;
+  return null;
+}
 function codigoDeEscuela(t){
   const m = String(t||"").match(/^\s*(\d{4,6})\s*-/);
   return m ? m[1] : null;
@@ -299,19 +319,18 @@ async function cargarDatos(){
   ocultarAviso();
   ultimoError = null;
 
-  // 1) Pestaña "Escuelas": listado con GRUPO y FECHA programada por escuela
-  const filasEsc = await cargarTabla(SHEET_ESCUELAS, parsearEscuelasGviz, parsearEscuelasCSV);
-  if(filasEsc && filasEsc.length > 0){
-    const escConCoords = completarCoordenadas(filasEsc);
-    if(escConCoords.length > 0) ESCUELAS = escConCoords;
-  } // si falla, se conserva la última versión cargada (o el listado de respaldo incrustado)
+  // 1) Catálogo "Centros Escolares" (opcional): solo aporta coordenadas/nombre
+  const filasCat = await cargarTabla(SHEET_ESCUELAS, parsearEscuelasGviz, parsearEscuelasCSV);
+  if(filasCat && filasCat.length > 0) actualizarCatalogo(filasCat);
 
-  // 2) Pestaña "Asistencia": registros del equipo técnico
+  // 2) Pestaña "Equipo Tecnico": una fila por rol (con FECHA, TURNO y ASISTIO)
   const filasAsis = await cargarTabla(SHEET_ASISTENCIA, filasDesdeGviz, filasDesdeCSV);
 
   if(filasAsis){
     registros = filasAsis;
+    construirEscuelas();      // universo de escuelas = las que aparecen en los datos
     actualizarFechas();
+    actualizarTurnos();
     procesarYPintar();
     document.getElementById("ultima").textContent =
       "Última actualización: " + new Date().toLocaleTimeString("es-SV", {hour:"2-digit", minute:"2-digit", second:"2-digit"});
@@ -376,28 +395,34 @@ function cargarViaJsonp(url){
   });
 }
 
-/* Columnas esperadas: Fecha, Hora, Escuela, Cargo, Asistencia, Registrado por */
+/* Columnas de "Equipo Tecnico": CODIGO · CENTRO · FECHA · TURNO · ROLES · ASISTIO */
+function idxAsistencia(cols){
+  return {
+    codigo:     indiceCol(cols, ["codigo","codigo sede","codigo ce"], -1),
+    centro:     indiceCol(cols, ["centro","centro escolar","centro educativo","escuela"], -1),
+    fecha:      indiceCol(cols, ["fecha"], -1),
+    turno:      indiceCol(cols, ["turno","horario","hora"], -1),
+    cargo:      indiceCol(cols, ["roles","rol","cargo"], -1),
+    asistencia: indiceCol(cols, ["asistio","asistencia"], -1)
+  };
+}
+
 function filasDesdeGviz(json){
   const cols = (json.table.cols || []).map(c => normalizar(c.label));
-  const idx = {
-    fecha: indiceCol(cols, ["fecha"], 0),
-    hora:  indiceCol(cols, ["hora"], 1),
-    escuela: indiceCol(cols, ["escuela","centro escolar"], 2),
-    cargo: indiceCol(cols, ["cargo"], 3),
-    asistencia: indiceCol(cols, ["asistencia"], 4)
-  };
+  const idx = idxAsistencia(cols);
   const datos = [];
   for(const f of (json.table.rows || [])){
     const c = f.c || [];
-    const celda = i => c[i] || {};
-    const codigo = codigoDeEscuela(celda(idx.escuela).v);
+    const celda = i => (i >= 0 && c[i]) ? c[i] : {};
+    const codigo = idx.codigo >= 0 ? codigoLimpio(celda(idx.codigo).v) : codigoDeEscuela(celda(idx.centro).v);
     const cargo = cargoCanonico(celda(idx.cargo).v);
     if(!codigo || !cargo) continue;
     datos.push({
-      fecha: fechaISO(celda(idx.fecha).v, celda(idx.fecha).f),
-      hora: celda(idx.hora).f || String(celda(idx.hora).v || ""),
       codigo, cargo,
-      asistio: esSi(celda(idx.asistencia).v)
+      centro: String(celda(idx.centro).v || "").trim(),
+      fecha: fechaISO(celda(idx.fecha).v, celda(idx.fecha).f),
+      turno: String(celda(idx.turno).v || "").trim(),
+      asistio: valorAsistio(celda(idx.asistencia).v)
     });
   }
   return datos;
@@ -408,24 +433,20 @@ function filasDesdeCSV(texto){
   if(lineas.length < 2) return [];
   const filas = lineas.map(divideCSV);
   const cab = filas[0].map(c=>normalizar(c));
-  const idx = {
-    fecha: indiceCol(cab, ["fecha"], 0),
-    hora:  indiceCol(cab, ["hora"], 1),
-    escuela: indiceCol(cab, ["escuela","centro escolar"], 2),
-    cargo: indiceCol(cab, ["cargo"], 3),
-    asistencia: indiceCol(cab, ["asistencia"], 4)
-  };
+  const idx = idxAsistencia(cab);
   const datos = [];
   for(let i=1;i<filas.length;i++){
     const f = filas[i];
-    const codigo = codigoDeEscuela(f[idx.escuela]);
-    const cargo = cargoCanonico(f[idx.cargo]);
+    const val = j => (j >= 0 ? f[j] : null);
+    const codigo = idx.codigo >= 0 ? codigoLimpio(val(idx.codigo)) : codigoDeEscuela(val(idx.centro));
+    const cargo = cargoCanonico(val(idx.cargo));
     if(!codigo || !cargo) continue;
     datos.push({
-      fecha: fechaISO(f[idx.fecha], null),
-      hora: String(f[idx.hora]||"").trim(),
       codigo, cargo,
-      asistio: esSi(f[idx.asistencia])
+      centro: String(val(idx.centro) || "").trim(),
+      fecha: fechaISO(val(idx.fecha), null),
+      turno: String(val(idx.turno) || "").trim(),
+      asistio: valorAsistio(val(idx.asistencia))
     });
   }
   return datos;
@@ -442,7 +463,8 @@ function parsearEscuelasGviz(json){
     const e = armarEscuela(
       celda(idx.codigo).v, celda(idx.nombre).v,
       celda(idx.lat).v, celda(idx.lng).v,
-      celda(idx.grupo).v, fechaISO(celda(idx.fecha).v, celda(idx.fecha).f)
+      celda(idx.grupo).v, fechaISO(celda(idx.fecha).v, celda(idx.fecha).f),
+      celda(idx.distrito).v
     );
     if(e) datos.push(e);
   }
@@ -460,7 +482,7 @@ function parsearEscuelasCSV(texto){
     const f = filas[i];
     const val = j => (j >= 0 && f[j] !== undefined) ? f[j] : null;
     const e = armarEscuela(val(idx.codigo), val(idx.nombre), val(idx.lat), val(idx.lng),
-                           val(idx.grupo), fechaISO(val(idx.fecha), null));
+                           val(idx.grupo), fechaISO(val(idx.fecha), null), val(idx.distrito));
     if(e) datos.push(e);
   }
   return datos;
@@ -472,12 +494,13 @@ function idxEscuelas(cols){
     nombre: indiceCol(cols, ["centro escolar","escuela","nombre"], 0),
     lat: indiceCol(cols, ["latitude","latitud","lat"], -1),
     lng: indiceCol(cols, ["longitude","longitud","lng","lon"], -1),
+    distrito: indiceCol(cols, ["distrito"], -1),
     grupo: indiceCol(cols, ["grupo"], -1),
     fecha: indiceCol(cols, ["fecha"], -1)
   };
 }
 
-function armarEscuela(codigoV, nombreV, latV, lngV, grupoV, fechaV){
+function armarEscuela(codigoV, nombreV, latV, lngV, grupoV, fechaV, distritoV){
   const nombreCompleto = String(nombreV || "").trim();
   const codigo = (codigoV !== null && codigoV !== undefined && String(codigoV).trim() !== "")
     ? String(codigoV).trim()
@@ -489,6 +512,7 @@ function armarEscuela(codigoV, nombreV, latV, lngV, grupoV, fechaV){
     nombre: nombreCompleto.replace(/^\s*\d+\s*-\s*/, ""),
     lat: isNaN(lat) ? null : lat,
     lng: isNaN(lng) ? null : lng,
+    distrito: (distritoV !== null && distritoV !== undefined) ? String(distritoV).trim() : "",
     grupo: (grupoV !== null && grupoV !== undefined) ? String(grupoV).trim() : "",
     fecha: fechaV || ""
   };
@@ -520,6 +544,44 @@ function completarCoordenadas(lista){
   return res;
 }
 
+/* Catálogo opcional (pestaña Centros Escolares): código -> {nombre, lat, lng} */
+function actualizarCatalogo(filas){
+  CATALOGO = {};
+  for(const e of filas){
+    if(e && e.codigo) CATALOGO[e.codigo] = {nombre: e.nombre, lat: e.lat, lng: e.lng, distrito: e.distrito || ""};
+  }
+}
+
+/* Coordenadas por código: primero el catálogo, luego el listado de respaldo */
+function coordsDe(codigo){
+  const cat = CATALOGO[codigo];
+  if(cat && coordValida(cat.lat, cat.lng)) return [cat.lat, cat.lng];
+  if(COORDS_FALLBACK[codigo]) return COORDS_FALLBACK[codigo];
+  return null;
+}
+
+/* Universo de escuelas = las que aparecen en los datos del equipo técnico */
+function construirEscuelas(){
+  const map = {};
+  for(const r of registros){
+    if(!r.codigo) continue;
+    if(!map[r.codigo]){
+      const cat = CATALOGO[r.codigo];
+      const co = coordsDe(r.codigo);
+      map[r.codigo] = {
+        codigo: r.codigo,
+        nombre: r.centro || (cat && cat.nombre) || ("Código " + r.codigo),
+        lat: co ? co[0] : null,
+        lng: co ? co[1] : null,
+        distrito: (cat && cat.distrito) || "",
+        grupo: "",
+        fecha: r.fecha || ""
+      };
+    }
+  }
+  ESCUELAS = Object.values(map);
+}
+
 function divideCSV(linea){
   const campos = []; let actual = ""; let enComillas = false;
   for(let i=0;i<linea.length;i++){
@@ -545,10 +607,10 @@ function indiceCol(cols, candidatos, porDefecto){
   return porDefecto;
 }
 
-/* ================= FECHAS ================= */
+/* ================= FECHAS Y TURNOS ================= */
 function actualizarFechas(){
-  // Las fechas vienen de la pestaña "Escuelas": día programado para cada escuela
-  fechasDisponibles = [...new Set(ESCUELAS.map(e=>e.fecha).filter(Boolean))].sort();
+  // Las fechas vienen de la pestaña de datos (FECHA de cada fila)
+  fechasDisponibles = [...new Set(registros.map(r=>r.fecha).filter(Boolean))].sort();
   const sel = document.getElementById("selFecha");
   const anterior = fechaSel;
   sel.innerHTML = "";
@@ -565,50 +627,71 @@ function actualizarFechas(){
   if(anterior && (anterior === "TODAS" || fechasDisponibles.includes(anterior))){
     fechaSel = anterior;            // respeta la selección del usuario
   }else if(fechasDisponibles.includes(hoy)){
-    fechaSel = hoy;                 // si hoy es un día programado, arranca en hoy
+    fechaSel = hoy;                 // si hoy es un día con datos, arranca en hoy
   }else{
     fechaSel = "TODAS";
   }
   sel.value = fechaSel;
 }
 
+function actualizarTurnos(){
+  const turnos = [...new Set(registros.map(r=>r.turno).filter(Boolean))].sort();
+  const sel = document.getElementById("selTurno");
+  const anterior = turnoSel;
+  sel.innerHTML = '<option value="TODOS">Turno: TODOS</option>';
+  for(const t of turnos){
+    const op = document.createElement("option");
+    op.value = t; op.textContent = "Turno: " + t;
+    sel.appendChild(op);
+  }
+  turnoSel = (anterior === "TODOS" || turnos.includes(anterior)) ? anterior : "TODOS";
+  sel.value = turnoSel;
+}
+
 function escuelasEnFecha(){
-  if(!fechaSel || fechaSel === "TODAS") return ESCUELAS;
-  return ESCUELAS.filter(e => e.fecha === fechaSel);
+  // Escuelas con al menos una fila bajo el filtro actual de fecha+turno
+  return ESCUELAS.filter(e => { const st = estadoPorEscuela[e.codigo]; return st && st.total > 0; });
 }
 
 /* ================= LÓGICA DE ESTADO ================= */
 function procesarYPintar(){
-  // último registro por escuela+cargo en la fecha seleccionada (los más recientes ganan)
   estadoPorEscuela = {};
-  const ultimo = {}; // "codigo|cargo" -> asistio
-  for(const r of registros){
-    ultimo[r.codigo + "|" + r.cargo] = r.asistio; // recorrido en orden: la fila más reciente queda
-  }
   for(const e of ESCUELAS){
-    const porCargo = {};
-    let reportados = 0, asistentes = 0, inasistentes = 0;
-    for(const c of CARGOS){
-      const v = ultimo[e.codigo + "|" + c];
-      if(v === undefined){
-        porCargo[c] = null;
-      }else{
-        porCargo[c] = v;
-        reportados++;
-        if(v) asistentes++; else inasistentes++;
-      }
+    estadoPorEscuela[e.codigo] = {color:"rojo", porCargo:{}, reportados:0, asistentes:0, inasistentes:0, pendientes:0, total:0};
+  }
+  const fOK = r => (!fechaSel || fechaSel === "TODAS") ? true : r.fecha === fechaSel;
+  const tOK = r => (turnoSel === "TODOS") ? true : r.turno === turnoSel;
+
+  for(const r of registros){
+    if(!fOK(r) || !tOK(r)) continue;
+    const st = estadoPorEscuela[r.codigo];
+    if(!st) continue;
+    st.total++;
+    st.porCargo[r.cargo] = combinarAsistio(st.porCargo[r.cargo], r.asistio);
+    if(r.asistio === null){
+      st.pendientes++;
+    }else{
+      st.reportados++;
+      if(r.asistio) st.asistentes++; else st.inasistentes++;
     }
+  }
+
+  for(const e of ESCUELAS){
+    const st = estadoPorEscuela[e.codigo];
+    // normaliza cargos no vistos a null (para el popup)
+    for(const c of CARGOS){ if(!(c in st.porCargo)) st.porCargo[c] = null; }
     let color;
     if(cargoSel !== "todos"){
-      const v = porCargo[cargoSel];
+      const v = st.porCargo[cargoSel];
       color = (v === null || v === undefined) ? "rojo" : (v ? "verde" : "amarillo");
     }else{
-      if(reportados === 0) color = "rojo";
-      else if(asistentes === CARGOS.length) color = "verde";
-      else color = "amarillo";
+      if(st.reportados === 0) color = "rojo";                          // nadie marcado: pendiente
+      else if(st.inasistentes > 0 || st.pendientes > 0) color = "amarillo"; // con inasistencias o incompleta
+      else color = "verde";                                            // todos presentes
     }
-    estadoPorEscuela[e.codigo] = {color, porCargo, reportados, asistentes, inasistentes};
+    st.color = color;
   }
+
   pintarResumen();
   pintarMapa();
   pintarLista();
@@ -618,16 +701,19 @@ function procesarYPintar(){
 function pintarResumen(){
   let asistentes = 0, inasistentes = 0, sinReporte = 0;
   let verdes = 0, amarillas = 0, rojas = 0;
-  const cargosConsiderados = cargoSel === "todos" ? CARGOS : [cargoSel];
   const enFecha = escuelasEnFecha();
   for(const e of enFecha){
     const est = estadoPorEscuela[e.codigo];
     if(est.color === "verde") verdes++;
     else if(est.color === "amarillo") amarillas++;
     else rojas++;
-    for(const c of cargosConsiderados){
-      const v = est.porCargo[c];
-      if(v === null) sinReporte++;
+    if(cargoSel === "todos"){
+      asistentes  += est.asistentes;
+      inasistentes += est.inasistentes;
+      sinReporte  += est.pendientes;
+    }else{
+      const v = est.porCargo[cargoSel];
+      if(v === null || v === undefined) sinReporte++;
       else if(v) asistentes++;
       else inasistentes++;
     }
@@ -650,6 +736,7 @@ function pintarMapa(){
   marcadores = {};
   const visibles = escuelasFiltradas();
   for(const e of visibles){
+    if(!coordValida(e.lat, e.lng)) continue;   // sin coordenadas: no se dibuja marcador
     const est = estadoPorEscuela[e.codigo];
     const m = L.circleMarker([e.lat, e.lng], {
       radius: 7,
@@ -672,7 +759,7 @@ function pintarMapa(){
 function htmlPopup(e, est){
   let html = `<div class="popup-nombre">${e.nombre}</div>` +
              `<div class="popup-codigo">Código ${e.codigo}` +
-             (e.grupo ? ` · Grupo ${e.grupo}` : "") +
+             (e.distrito ? ` · ${e.distrito}` : "") +
              (e.fecha ? ` · ${e.fecha}` : "") + `</div>`;
   for(const c of CARGOS){
     const v = est.porCargo[c];
@@ -712,7 +799,7 @@ function pintarLista(){
       <div class="punto ${est.color}"></div>
       <div>
         <div class="nombre">${e.nombre}</div>
-        <div class="codigo">Código ${e.codigo}${e.grupo ? " · Grupo " + e.grupo : ""}${e.fecha ? " · " + e.fecha : ""}</div>
+        <div class="codigo">Código ${e.codigo}${e.distrito ? " · " + e.distrito : ""}${e.fecha ? " · " + e.fecha : ""}</div>
       </div>
       <div class="cifras">
         <div class="asis" style="color:${COLORES[est.color]}">${cifra}</div>
@@ -770,6 +857,12 @@ document.querySelectorAll(".chip").forEach(ch=>{
 document.getElementById("selFecha").addEventListener("change", ev=>{
   fechaSel = ev.target.value;
   yaAjustado = false; // reencuadrar el mapa a las escuelas del día
+  procesarYPintar();
+});
+
+document.getElementById("selTurno").addEventListener("change", ev=>{
+  turnoSel = ev.target.value;
+  yaAjustado = false;
   procesarYPintar();
 });
 
